@@ -1,11 +1,25 @@
 var createError = require('http-errors');
 var express = require('express');
+const mongoose = require('mongoose');
 const socketio = require('socket.io');
+const Room = require('./room_data');
 const http = require('http');
 const cors = require('cors');
 var path = require('path');
 const { addUser, removeUser, getUser, getUsersInRoom } = require('./users');
 
+
+const options = {
+	useUnifiedTopology : true,
+	useNewUrlParser : true
+}
+
+mongoose.connect('mongodb://127.0.0.1/test_db',options);
+
+const db = mongoose.connection;
+
+db.on('error', console.error.bind(console, 'DB connection error:'));
+db.once('open', () => console.log('DB connection successful'));
 // var cookieParser = require('cookie-parser');
 // var logger = require('morgan');
 
@@ -19,6 +33,15 @@ const server = http.createServer(app);
 const io = socketio(server);
 
 app.use(cors());
+
+
+app.get('/room_data', async (req, res) => {
+
+	const room_data = await Room.find({});
+
+	res.json(room_data);
+
+});
 
 
 const SocketConst = {
