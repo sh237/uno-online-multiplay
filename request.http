@@ -1,5 +1,8 @@
-GET http://localhost:5000/user/
+GET http://localhost:5000/users/
 
 ###
 
-GET http://localhost:5000/user/63a573993cd5c10a576b6667/
+GET http://localhost:5000/users/delete/63a573993cd5c10a576b6667/
+###
+
+GET http://localhost:5000/rooms/
