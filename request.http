@@ -1,8 +1,9 @@
-GET http://localhost:5000/users/
+#this file is not used in the project, it is just for testings
+# GET http://localhost:5000/users/
 
-###
+# ###
 
-GET http://localhost:5000/users/delete/63a573993cd5c10a576b6667/
-###
+# GET http://localhost:5000/users/delete/63a573993cd5c10a576b6667/
+# ###
 
-GET http://localhost:5000/rooms/
+# GET http://localhost:5000/rooms/
