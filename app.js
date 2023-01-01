@@ -89,10 +89,48 @@ const DrawReason = {
   NOTING: 'nothing',
 };
 
+var current_information = {room:"",player:""}
+
 io.on('connection', socket => {
-  socket.on("connect", () => {
-    console.log("New client connected");
+    socket.on("connect", () => {
+      console.log("New client connected");
+    });
+
+    socket.on("disconnect", (reason) => {
+
+      Room.findOne({room_name: current_information.room}, (error, room) => {
+        if (error) {
+          console.error(error);
+          return;
+        }
+        if(room != null){
+
+          var index = room.order.indexOf(current_information.player);
+          room.order.splice(index, 1);
+
+          Room.findOneAndUpdate(
+            { room_name: current_information.room },
+            {
+              $set: {
+                number_of_player :  room.number_of_player - 1,
+                order: room.order,
+              }
+            },
+            { new: true },
+            (err, room) => {
+              if (err) {
+                console.log('Something went wrong:', room);
+              } else {
+                console.log('Document successfully deleted:', room);
+              }
+            }
+          );
+        }
+      });
+    console.log("Client disconnected");
+    console.log("reason", reason);
   });
+
   console.log("New client connected");
   console.log("socket.id", socket.id);
 
@@ -106,32 +144,48 @@ io.on('connection', socket => {
           return;
         }
         if(room != null){
-          // updateNumOfPlayer メソッドを呼び出す
-          room.updateNumOfPlayer(payload.room_name);
-          Room.findOneAndUpdate(
-            { room_name: payload.room_name },
-            {
-              $set: {
-                number_of_player :  room.number_of_player + 1
-              }
-            },
-            { new: true },
-            (err, room) => {
-              if (err) {
-                console.log('Something went wrong:', room);
-              } else {
-                console.log('Document successfully updated:', room);
-              }
-            }
-          );
+          // ルームが存在する場合
+          console.log("number_of_player", room.number_of_player);
+          if(room.number_of_player >= 4){
+            console.log("room is full");
+            // callback("room is full", null);
+            callback("room is full", null);
+            return;
+          }else{
+            console.log("room is not full");
+            console.log("room.number_of_player", room.number_of_player);
 
+            Room.findOneAndUpdate(
+              { room_name: payload.room_name },
+              {
+                $set: {
+                  number_of_player :  room.number_of_player + 1,
+                  order: room.order.concat(payload.player),
+                }
+              },
+              { new: true },
+              (err, room) => {
+                if (err) {
+                  console.log('Something went wrong:', room);
+                } else {
+                  console.log('Document successfully updated:', room);
+                  const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
+                  current_information.room = payload.room_name;
+                  callback(null, res);
+                }
+              }
+            );
+          }
         }else{
-          Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0},
+          Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0, order:[payload.player]},
             (error) => {
             if (error) {
               console.log(error);
             } else {
               console.log('Success!');
+              const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
+              current_information.room = payload.room_name;
+              callback(null, res);
             }
           });
 
@@ -147,13 +201,8 @@ io.on('connection', socket => {
 
           console.log("create new room");
         }
-      });
-
-    
-    const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
-    callback(null, res);
+    });
   });
-
 });
 
 
