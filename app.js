@@ -3,11 +3,9 @@ var express = require('express');
 const mongoose = require('mongoose');
 const socketio = require('socket.io');
 const Room = require('./room_data');
+const User = require('./user_data');
 const http = require('http');
 const cors = require('cors');
-var path = require('path');
-const { addUser, removeUser, getUser, getUsersInRoom } = require('./users');
-
 
 const options = {
 	useUnifiedTopology : true,
@@ -34,14 +32,14 @@ const io = socketio(server);
 
 app.use(cors());
 
+var indexRouter = require('./routes/index');
+var usersRouter = require('./routes/users');
+var roomsRouter = require('./routes/rooms');
 
-app.get('/room_data', async (req, res) => {
 
-	const room_data = await Room.find({});
-
-	res.json(room_data);
-
-});
+app.use('/', indexRouter);
+app.use('/users', usersRouter);
+app.use('/rooms', roomsRouter );
 
 
 const SocketConst = {
@@ -92,33 +90,70 @@ const DrawReason = {
 };
 
 io.on('connection', socket => {
+  socket.on("connect", () => {
+    console.log("New client connected");
+  });
+  console.log("New client connected");
+  console.log("socket.id", socket.id);
+
   socket.on(SocketConst.EMIT.JOIN_ROOM,(payload, callback) => {
-    let numberOfUsersInRoom = getUsersInRoom(payload.room_name).length;
-    const { error, newUser} = addUser({
-      id: socket.id,
-      player: payload.player,
-      room_name: payload.room_name
-    });
-    if(error)
-      return callback(error);
+    console.log("payload", payload);
+
+      Room.findOne({room_name: payload.room_name}, (error, room) => {
+        if (error) {
+          console.error(error);
+          //create new room
+          return;
+        }
+        if(room != null){
+          // updateNumOfPlayer メソッドを呼び出す
+          room.updateNumOfPlayer(payload.room_name);
+          Room.findOneAndUpdate(
+            { room_name: payload.room_name },
+            {
+              $set: {
+                number_of_player :  room.number_of_player + 1
+              }
+            },
+            { new: true },
+            (err, room) => {
+              if (err) {
+                console.log('Something went wrong:', room);
+              } else {
+                console.log('Document successfully updated:', room);
+              }
+            }
+          );
+
+        }else{
+          Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0},
+            (error) => {
+            if (error) {
+              console.log(error);
+            } else {
+              console.log('Success!');
+            }
+          });
+
+          setTimeout(() => {
+            Room.find((error, data) => {
+              if (error) {
+                console.log(error);
+              } else {
+                console.log(data);
+              }
+            });
+          }, 1000);  // 1 秒待つ
+
+          console.log("create new room");
+        }
+      });
+
     
-    socket.join(newUser.room_name);
-    io.to(newUser.room_name).emit(SocketConst.EMIT.JOIN_ROOM, { room_name: newUser.room_name, player: newUser.player });
-    const res = { room_name: newUser.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
+    const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
     callback(null, res);
   });
 
-  socket.on(SocketConst.EMIT.PLAY_CARD,(payload, callback) => {
-    const user = getUser(socket.id);
-    io.to(user.room_name).emit(SocketConst.EMIT.PLAY_CARD, { player: user.player, card_play: payload.card_play });
-  });
-
-  socket.on(SocketConst.EMIT.DRAW_CARD,(payload, callback) => {
-    const user = getUser(socket.id);
-    io.to(user.room_name).emit(SocketConst.EMIT.DRAW_CARD, { player: user.player, is_draw: true, can_play_draw_card: true});
-  });
-
-  socket.on()
 });
 
 
