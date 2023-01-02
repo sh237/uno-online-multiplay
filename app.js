@@ -6,6 +6,7 @@ const http = require('http');
 const cors = require('cors');
 //socket-io.jsにioを渡す
 const socket_io_connect = require('./socket-io-connect');
+const socket_io_game = require('./socket-io-game');
 
 
 
