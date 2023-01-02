@@ -18,12 +18,9 @@ const db = mongoose.connection;
 
 db.on('error', console.error.bind(console, 'DB connection error:'));
 db.once('open', () => console.log('DB connection successful'));
-// var cookieParser = require('cookie-parser');
-// var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
-const { Socket } = require('dgram');
 
 const PORT = process.env.PORT || 5000
 var app = express();
@@ -89,48 +86,48 @@ const DrawReason = {
   NOTING: 'nothing',
 };
 
-var current_information = {room:"",player:""}
 
 io.on('connection', socket => {
-    socket.on("connect", () => {
-      console.log("New client connected");
-    });
+  socket.on("connect", () => {
+    console.log("New client connected");
 
-    socket.on("disconnect", (reason) => {
-
-      Room.findOne({room_name: current_information.room}, (error, room) => {
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
+    Room.findOne(
+      { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
         if (error) {
           console.error(error);
           return;
         }
         if(room != null){
-
-          var index = room.order.indexOf(current_information.player);
-          room.order.splice(index, 1);
-
-          Room.findOneAndUpdate(
-            { room_name: current_information.room },
-            {
-              $set: {
-                number_of_player :  room.number_of_player - 1,
-                order: room.order,
-              }
-            },
-            { new: true },
-            (err, room) => {
-              if (err) {
-                console.log('Something went wrong:', room);
-              } else {
-                console.log('Document successfully deleted:', room);
-              }
+          // socket_idに対応するplayerを探す
+          let player = room.players_info.find((player) => {
+            return player.socket_id == socket.id;
+          });
+          // playerのindexを探す
+          let players_info_index = room.players_info.indexOf(player);
+          // playerのindexを探す
+          let order_index = room.order.indexOf(player.player_name);
+          // players_infoからplayerを削除
+          room.players_info.splice(players_info_index, 1);
+          // orderからplayerを削除
+          room.order.splice(order_index, 1);
+          // number_of_playerを減らす
+          room.number_of_player = room.number_of_player - 1;
+          // roomを保存
+          room.save((error, room) => {
+            if (error) {
+              console.error(error);
+              return;
             }
-          );
+          });
         }
-      });
-    console.log("Client disconnected");
-    console.log("reason", reason);
+      }
+    );
   });
-
+            
   console.log("New client connected");
   console.log("socket.id", socket.id);
 
@@ -140,7 +137,6 @@ io.on('connection', socket => {
       Room.findOne({room_name: payload.room_name}, (error, room) => {
         if (error) {
           console.error(error);
-          //create new room
           return;
         }
         if(room != null){
@@ -148,47 +144,37 @@ io.on('connection', socket => {
           console.log("number_of_player", room.number_of_player);
           if(room.number_of_player >= 4){
             console.log("room is full");
-            // callback("room is full", null);
             callback("room is full", null);
             return;
           }else{
             console.log("room is not full");
             console.log("room.number_of_player", room.number_of_player);
-
-            Room.findOneAndUpdate(
-              { room_name: payload.room_name },
-              {
-                $set: {
-                  number_of_player :  room.number_of_player + 1,
-                  order: room.order.concat(payload.player),
-                }
-              },
-              { new: true },
-              (err, room) => {
-                if (err) {
-                  console.log('Something went wrong:', room);
-                } else {
-                  console.log('Document successfully updated:', room);
-                  const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
-                  current_information.room = payload.room_name;
-                  callback(null, res);
-                }
+            room.number_of_player = room.number_of_player + 1;
+            room.order.push(payload.player);
+            room.players_info.push({player_name: payload.player, socket_id: socket.id});
+            room.save((error, room) => {
+              if (error) {
+                console.error(error);
+                return;
               }
-            );
+              console.log("room", room);
+              const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
+              callback(null, res);
+            });
           }
         }else{
-          Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0, order:[payload.player]},
+          Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0, order:[payload.player], players_info:{player_name: payload.player, socket_id: socket.id}},
             (error) => {
             if (error) {
               console.log(error);
             } else {
               console.log('Success!');
               const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
-              current_information.room = payload.room_name;
               callback(null, res);
             }
           });
 
+          //1秒待ってからデータを取得する
           setTimeout(() => {
             Room.find((error, data) => {
               if (error) {

@@ -12,7 +12,7 @@ const RoomSchema = mongoose.Schema({
     order:[String],
     is_reverse:Boolean,
     current_player:Number,
-    player_info:[{player_name:String, socket_id:String}],
+    players_info:[{player_name:String, socket_id:String}],
 });
 
 // RoomSchema.methods.updateNumOfPlayer = function(room_name) {
