@@ -7,6 +7,7 @@ const RoomSchema = mongoose.Schema({
     player2:[{color:String,special:String,number:Number}],
     player3:[{color:String,special:String,number:Number}],
     player4:[{color:String,special:String,number:Number}],
+    current_field:{color:String,special:String,number:Number},
     number_of_player:Number,
     order:[String],
     is_reverse:Boolean,
