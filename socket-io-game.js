@@ -4,8 +4,6 @@ const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard } = requi
 module.exports = (io) => {
   
 
-  return{
-}
 
 
 

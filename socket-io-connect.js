@@ -173,7 +173,6 @@ module.exports = (io) => {
                   const res = { room_name: payload.room_name, player: payload.player, your_id : player_id, total_turn : 1000, white_wild : "bind_2" };
                   callback(null, res);
                 }
-                
               });
             }, 1000);  // 1 秒待つ
             console.log("created new room");
