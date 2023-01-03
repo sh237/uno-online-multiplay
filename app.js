@@ -28,7 +28,11 @@ var usersRouter = require('./routes/users');
 const PORT = process.env.PORT || 5000
 var app = express();
 const server = http.createServer(app);
-const io = socketio(server);
+const io = socketio(server, {
+  cors: {                      // corsモジュールでは上手くCORSできないため、Server作成時の引数にオプションを追加する
+      origin: "*",
+      methods: ["GET", "POST"],
+  },});
 socket_io_connect(io);
 socket_io_game(io);
 
