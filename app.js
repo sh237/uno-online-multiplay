@@ -8,8 +8,6 @@ const cors = require('cors');
 const socket_io_connect = require('./socket-io-connect');
 const socket_io_game = require('./socket-io-game');
 
-
-
 const options = {
 	useUnifiedTopology : true,
 	useNewUrlParser : true
@@ -21,9 +19,6 @@ const db = mongoose.connection;
 
 db.on('error', console.error.bind(console, 'DB connection error:'));
 db.once('open', () => console.log('DB connection successful'));
-
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
 
 const PORT = process.env.PORT || 3002
 var app = express();
@@ -46,11 +41,6 @@ var roomsRouter = require('./routes/rooms');
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/rooms', roomsRouter );
-
-
-
-
-
 
 server.listen(PORT, () => console.log(`Server has started on port ${PORT}`));
 
