@@ -7,9 +7,6 @@ const Room = () => {
     const context = useContext(GlobalContext);
     const socket = useContext(SocketContext);
     const navigate = useNavigate();
-    const clientId = context.clientId;
-    const roomId = context.roomId;
-    console.log(`clientId: ${clientId}  roomId: ${roomId}`);
     const [players, setPlayers] = useState([]);
     const SocketConst = {
         EMIT: {
@@ -20,7 +17,7 @@ const Room = () => {
     function leaveRoom() {
         const result = window.confirm('Are you sure?');
         if (result) {
-            socket.emit('', "");
+            socket.emit('leave_room', { room_name: context.roomId, player_name: context.clientId }, (error, data) => {});
             navigate('/');
         } else {
             return;
@@ -34,13 +31,12 @@ const Room = () => {
 
     // Serverにルームに入るためのメッセージを送信
     useEffect(() => {
-        socket.emit(SocketConst.EMIT.JOIN_ROOM, { room_name: roomId, player: clientId }, (error, data) => {
+        socket.emit(SocketConst.EMIT.JOIN_ROOM, { room_name: context.roomId, player: context.clientId }, (error, data) => {
             if (error) {
                 console.log(error);
                 alert("room is full or error");
                 navigate('/');
             } else {
-                console.log(data.player);
                 context.setRoomId(data.room_name);
                 context.setClientId(data.player);
                 console.log("data set : ", context.roomId, context.clientId);
