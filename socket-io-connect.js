@@ -38,7 +38,8 @@ module.exports = (io) => {
                   //ルームから抜ける
                   socket.leave(data.room_name);
                   //ソケットを切断
-                  socket.disconnect();
+                  //socket.disconnect();
+                  io.sockets.in(room.room_name).emit('currentPlayers',room.players_info);
                 }
               });
             }
