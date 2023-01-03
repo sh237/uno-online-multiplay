@@ -82,6 +82,8 @@ module.exports = (io) => {
                   if (error) {
                     console.error(error);
                     return;
+                  }else{
+                    io.sockets.in(room.room_name).emit('currentPlayers',room.players_info);
                   }
                 });
               }
@@ -110,7 +112,7 @@ module.exports = (io) => {
                   return player.player_name == payload.player;
                 })._id;
                 room.order.push(player_id);
-                io.sockets.in(room.room_name).emit('currentPlayers',room.players_info);
+                
                 if(room.number_of_player == 4){
                   console.log("room is full");
                   socket.join(room.room_name);
@@ -129,6 +131,7 @@ module.exports = (io) => {
                     socket.join(room.room_name);
                     const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
                     callback(null, res);
+                    io.sockets.in(room.room_name).emit('currentPlayers',room.players_info);
                   });
                 }
               }

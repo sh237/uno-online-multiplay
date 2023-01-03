@@ -25,16 +25,74 @@ function Game() {
       FINISH_GAME: 'finish-game',
     },
   };
-  const [cards, setCards] = useState([]);
+  const [myCards, setMyCards] = useState([]);
   const [isMyTurn, setIsMyTurn] = useState(false);
+  const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
 
+  //
   socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
     console.log("first-player-event", data);
-  })
+  });
+  //サーバーからカードを受け取る
+  socket.on(SocketConst.EMIT.RECEIVER_CARD, (data) => {
+    console.log("receive-card-event", data);
+    const myCards_ = [...myCards];
+    data.cards.map((v) => {
+      myCards_.push(v);
+    });
+    setMyCards(myCards_);
+  });
+  //
+  socket.on(SocketConst.EMIT.COLOR_OF_WILD, (data) => {
+    console.log("event", data);
+  });
+  //
+  socket.on(SocketConst.EMIT.SHUFFLE_WILD, (data) => {
+    console.log("event", data);
+  });
+  //
+  socket.on(SocketConst.EMIT.NEXT_PLAYER, (data) => {
+    console.log("event", data);
+  });
+  //
+  socket.on(SocketConst.EMIT.PUBLIC_CARD, (data) => {
+    console.log("event", data);
+  });
+  //
+  socket.on(SocketConst.EMIT.FINISH_TURN, (data) => {
+    console.log("event", data);
+  });
+  //
+  socket.on(SocketConst.EMIT.FINISH_GAME, (data) => {
+    console.log("event", data);
+  });
+
+
+  function selectCard(v) {
+    console.log(v);
+    setMyCards(
+      myCards.filter((card) => (card !== v))
+    );
+    socket.emit(SocketConst.EMIT.PLAY_CARD, { "card_play": { "number": v.number, "color": v.color, "special": v.special } });
+  };
+
+  function drawCard() {
+    socket.emit(SocketConst.EMIT.DRAW_CARD);
+  }
 
   return (
     <div className="Game">
-
+      <p>field card:{fieldCard.color} {fieldCard.special} {fieldCard.number}</p>
+      <button onClick={drawCard}>
+        draw card
+      </button>
+      <ul>
+        {myCards.map(v => (
+          <li onClick={() => selectCard(v)} key={v._id}>
+            {v.color} {v.special} {v.number}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
