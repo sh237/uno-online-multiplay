@@ -4,7 +4,6 @@ function Game() {
     
   return (
     <div className="Game">
-      <h1>Start</h1>
     </div>
   );
 }
