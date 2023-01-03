@@ -29,8 +29,18 @@ const SocketConst = {
   };
 
   
-socket.on('connection', () => {
-  console.log('connect');
+socket.on('connection', (socket) => {
+    console.log('a user connected');
+    socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
+      console.log('first_player');
+      console.log('in');
+      console.log(data);
+  });
+});
+
+socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
+    console.log('first_player');
+    console.log(data);
 });
 
 // Serverからメッセージを受信
@@ -48,6 +58,7 @@ socket.emit(SocketConst.EMIT.JOIN_ROOM, { room_name: roomId, player: clientId}, 
         current_information.room_name = data.room_name;
         current_information.player = data.player;
         console.log("data set : ", current_information);
+
     }
 });
 
