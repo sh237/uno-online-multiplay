@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useContext } from 'react';
 import { GlobalContext } from './Context.js';
 
@@ -13,7 +12,7 @@ const Join = () => {
         if (!context.clientId || !context.roomId) {
             alert("何か入力してください");
             return;
-        } else if (client_!=context.clientId || room_!=context.roomId) {
+        } else if (client_ != context.clientId || room_ != context.roomId) {
             alert("スペースは含まないでください");
             return;
         }
@@ -27,7 +26,7 @@ const Join = () => {
             <p>enter room id</p>
             <input value={context.roomId} onChange={(event) => context.setRoomId(event.target.value)} />
             <br></br>
-            
+
             <button onClick={joinRoom}>
                 Join Room
             </button>

@@ -25,13 +25,13 @@ function Game() {
       FINISH_GAME: 'finish-game',
     },
   };
-  const [cards,setCards] = useState([]);
+  const [cards, setCards] = useState([]);
   const [isMyTurn, setIsMyTurn] = useState(false);
 
-  socket.on(SocketConst.EMIT.FIRST_PLAYER,(data)=>{
-    console.log("first-player-event",data);
+  socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
+    console.log("first-player-event", data);
   })
-    
+
   return (
     <div className="Game">
 

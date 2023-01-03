@@ -15,6 +15,14 @@ const Context = (props) => {
         roomId,
         setRoomId
     }
+    //サーバーとの接続を受信
+    socket.on('connection', () => {
+        console.log('connect');
+    });
+    //サーバーとの接続が切れたときの処理
+    socket.on('disconnect', () => {
+        socket.emit('delete_data', { data: { room_name: roomId, player: clientId } });
+    });
     return (
         <GlobalContext.Provider value={value}>
             <SocketContext.Provider value={socket}>
