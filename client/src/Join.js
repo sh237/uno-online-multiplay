@@ -9,15 +9,15 @@ const Join = () => {
     function joinRoom() {
         const client_ = context.clientId.replace(/\s+/g, "");
         const room_ = context.roomId.replace(/\s+/g, "");
+        //英数字チェックはできてない
         if (!context.clientId || !context.roomId) {
-            //英数字チェックはできてない
             alert("何か入力してください");
             return;
         } else if (client_!=context.clientId || room_!=context.roomId) {
             alert("スペースは含まないでください");
             return;
         }
-        navigate('/Game')
+        navigate('/Room')
     };
     return (
         <div className="Join">
