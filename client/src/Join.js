@@ -6,13 +6,13 @@ const Join = () => {
     const context = useContext(GlobalContext);
     const navigate = useNavigate();
     function joinRoom() {
-        const client_ = context.clientId.replace(/\s+/g, "");
+        const player_ = context.playerName.replace(/\s+/g, "");
         const room_ = context.roomId.replace(/\s+/g, "");
         //英数字チェックはできてない
-        if (!context.clientId || !context.roomId) {
+        if (!context.playerName || !context.roomId) {
             alert("何か入力してください");
             return;
-        } else if (client_ != context.clientId || room_ != context.roomId) {
+        } else if (player_ != context.playerName || room_ != context.roomId) {
             alert("スペースは含まないでください");
             return;
         }
@@ -22,7 +22,7 @@ const Join = () => {
         <div className="Join">
             <h1>Welcome</h1>
             <p>enter id</p>
-            <input value={context.clientId} onChange={(event) => context.setClientId(event.target.value)} />
+            <input value={context.playerName} onChange={(event) => context.setPlayerName(event.target.value)} />
             <p>enter room id</p>
             <input value={context.roomId} onChange={(event) => context.setRoomId(event.target.value)} />
             <br></br>
