@@ -5,7 +5,7 @@ export const SocketContext = createContext();
 
 const Context = (props) => {
     const io = require('socket.io-client');
-    const port = 3002;
+    const port = 5000;
     const socket = io(`http://localhost:${port}`);
     const [clientId, setClientId] = useState("");
     const [roomId, setRoomId] = useState("");
