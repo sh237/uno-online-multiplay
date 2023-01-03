@@ -38,11 +38,20 @@ socket.on('server_to_client', (data) => {
   console.log(JSON.stringify(data.message));
 });
 
+var current_information = {room_name:"",player:""}
+
 // Serverにメッセージを送信
 socket.emit(SocketConst.EMIT.JOIN_ROOM, { room_name: roomId, player: clientId}, (error, data) => {
     if (error) {
         console.log(error);
     } else {
-        console.log(data);
+        current_information.room_name = data.room_name;
+        current_information.player = data.player;
+        console.log("data set : ", current_information);
     }
+});
+
+//サーバーとの接続が切れたときの処理
+socket.on('disconnect', () => {
+    socket.emit('delete_data',{ data: { room_name: current_information.room_name, player: current_information.player}});
 });

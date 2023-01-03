@@ -7,10 +7,13 @@ const RoomSchema = mongoose.Schema({
     player2:[{color:String,special:String,number:Number}],
     player3:[{color:String,special:String,number:Number}],
     player4:[{color:String,special:String,number:Number}],
+    current_field:{color:String,special:String,number:Number},
     number_of_player:Number,
     order:[String],
     is_reverse:Boolean,
     current_player:Number,
+    players_info:[{player_name:String, socket_id:String}],
+    binded_players:[{player_id:String, remain_turn:Number}],
 });
 
 // RoomSchema.methods.updateNumOfPlayer = function(room_name) {
