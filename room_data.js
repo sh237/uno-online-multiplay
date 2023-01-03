@@ -14,25 +14,4 @@ const RoomSchema = mongoose.Schema({
     number_card_play:Number,//何枚場に出たか(仕様書に書いてあった)
 });
 
-// RoomSchema.methods.updateNumOfPlayer = function(room_name) {
-//   this.model('Room').update({room_name:room_name}, { $inc: { number_of_user: number_of_user + 1 } }, (error) => {
-//   if (error) {
-//   console.log(error);
-//   } else {
-//   console.log('Success!');
-//   }
-//   });
-//   };
-
-
-RoomSchema.methods.displayRoom = function(callback) {
-  this.model('Room').find((error, data) => {
-    if (error) {
-      console.log(error);
-    } else {
-      console.log(data);
-    }
-  });
-};
-
 module.exports = mongoose.model('Room',RoomSchema);

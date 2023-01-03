@@ -1,48 +1,8 @@
-const { init } = require('./room_data');
 const Room = require('./room_data');
-const User = require('./user_data');
+const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard } = require('./socket-io-common');
 
 module.exports = (io) => {
-    const SocketConst = {
-        EMIT: {
-          JOIN_ROOM: 'join-room',
-          RECEIVER_CARD: 'receiver-card',
-          FIRST_PLAYER: 'first-player',
-          // COLOR_OF_WILD: 'color-of-wild',
-          // SHUFFLE_WILD: 'shuffle-wild',
-          // NEXT_PLAYER: 'next-player',
-          // PLAY_CARD: 'play-card',
-          // DRAW_CARD: 'draw-card',
-          // PLAY_DRAW_CARD: 'play-draw-card',
-          // CHALLENGE: 'challenge',
-          // PUBLIC_CARD: 'public-card',
-          // SAY_UNO_AND_PLAY_CARD: 'say-uno-and-play-card',
-          // POINTED_NOT_SAY_UNO: 'pointed-not-say-uno',
-          // SPECIAL_LOGIC: 'special-logic',
-          // FINISH_TURN: 'finish-turn',
-          // FINISH_GAME: 'finish-game',
-      },
-    };
-    const Special = {
-      SKIP: 'skip',
-      REVERSE: 'reverse',
-      DRAW_2: 'draw_2',
-      WILD: 'wild',
-      WILD_DRAW_4: 'wild_draw_4',
-      WILD_SHUFFLE: 'wild_shuffle',
-      WHITE_WILD: 'white_wild',
-    };
-    
-    const Color = {
-      RED: 'red',
-      YELLOW: 'yellow',
-      GREEN: 'green',
-      BLUE: 'blue',
-      BLACK: 'black',
-      WHITE: 'white',
-    };
-      
-      
+  
     io.on('connection', socket => {
         socket.on("connect", () => {
           console.log("New client connected");
@@ -124,7 +84,6 @@ module.exports = (io) => {
                       return;
                     }
                     socket.join(room.room_name);
-                    console.log("room", room);
                     const res = { room_name: payload.room_name, player: payload.player, your_id : socket.id, total_turn : 1000, white_wild : "bind_2" };
                     callback(null, res);
                   });
@@ -178,10 +137,17 @@ module.exports = (io) => {
                   //誰がはじめにカードを出すか、カードを出す順番を告知する
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.FIRST_PLAYER, {first_player: room.order[room.current_player], first_card : room.current_field, play_order : room.order });
                   //それぞれにカードを配る。
-                  distribute_cards(room);
-
+                  distributeCards(room);
+                  let is_must_call_draw_card = checkMustCallDrawCard(room.room_name, room.order[room.current_player]);
+                  //各プレイヤーの手札の枚数を配列に保存 形式は、{player_id : number_of_cards, player_id : number_of_cards, ...}というjson形式
+                  let number_card_of_player = {};
+                  room.players_info.forEach((player) => {
+                    number_card_of_player[player._id] = player.cards.length;
+                  });
+                  io.to(room.players_info[room.current_player].socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, { next_player : room.order[(room.current_player < 3 ? room.current_player + 1 : 0)], before_player : room.order[(room.current_player > 0 ? room.current_player - 1 : 3)], card_before : room.current_field, card_of_player : room.players_info[room.current_player].cards, must_call_draw_card : is_must_call_draw_card, turn_right : room.is_reverse, number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
                 });
               }, 1000);
+              is_game_started = false;
             }
         });
 
@@ -266,7 +232,7 @@ module.exports = (io) => {
   }
 
   //カードを配る関数
-  distribute_cards = (room) => {
+  distributeCards = (room) => {
     console.log("distribute_cards");
     //カードを配る
     for(let i=0; i<room.order.length; i++){
@@ -286,7 +252,6 @@ module.exports = (io) => {
         console.error(error);
         return;
       }
-      console.log("room", room);
     });
     for(let i=0; i<room.order.length; i++){
       let player_id = room.order[i];
@@ -296,10 +261,4 @@ module.exports = (io) => {
       io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards: player.cards});
     }
   }
-
-
-
 }
-
-
-
