@@ -43,10 +43,6 @@ socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
     console.log(data);
 });
 
-// Serverからメッセージを受信
-socket.on('server_to_client', (data) => {
-  console.log(JSON.stringify(data.message));
-});
 
 var current_information = {room_name:"",player:""}
 

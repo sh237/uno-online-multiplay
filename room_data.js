@@ -14,6 +14,8 @@ const RoomSchema = mongoose.Schema({
     current_player:Number,
     players_info:[{player_name:String, socket_id:String}],
     binded_players:[{player_id:String, remain_turn:Number}],
+    number_turn_play:Number,//何ターン目か(仕様書に書いてあった)
+    number_card_play:Number,//何枚場に出たか(仕様書に書いてあった)
 });
 
 // RoomSchema.methods.updateNumOfPlayer = function(room_name) {
