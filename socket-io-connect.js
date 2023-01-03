@@ -109,6 +109,7 @@ module.exports = (io) => {
                   return player.player_name == payload.player;
                 })._id;
                 room.order.push(player_id);
+                io.sockets.in(room.room_name).emit('currentPlayers',room.players_info);
                 if(room.number_of_player == 4){
                   console.log("room is full");
                   socket.join(room.room_name);
@@ -136,6 +137,7 @@ module.exports = (io) => {
                 (error) => {
                 if (error) {
                   console.log(error);
+                  return;
                 } else {
                   console.log('Success!');
                   socket.join(payload.room_name);
@@ -163,11 +165,13 @@ module.exports = (io) => {
                         }
                       });
                     }
+                    io.sockets.in(room.room_name).emit('currentPlayers',room.players_info);
                   });
               }, 1000);  // 1 秒待つ
               console.log("created new room");
             }
             if(is_game_started){
+              io.sockets.in(room.room_name).emit('startGame',"startGame");
               //ゲームを始める データの書き込みをする時間を1秒作る
               setTimeout(() => {
                 Room.findOne({room_name: payload.room_name}, (error, room) => {
