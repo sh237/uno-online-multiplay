@@ -2,14 +2,58 @@ const Room = require('./room_data');
 const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard } = require('./socket-io-common');
 
 module.exports = (io) => {
-  
+
     io.on('connection', socket => {
-        socket.on("connect", () => {
-          console.log("New client connected");
-      
+      socket.on('leave_room', (data) => {
+
+        console.log('leave_room');
+        //Roomからplayerを削除
+        Room.findOne(
+          { room_name: data.room_name }, (error, room) => {
+            if (error) {
+              console.error(error);
+              return;
+            }
+            if(room != null){
+              // player_nameに一致するplayerを探す
+              let player = room.players_info.find((player) => {
+                return player.player_name == data.player_name;
+              });
+              // players_infoにおけるplayerのindexを探す
+              let players_info_index = room.players_info.indexOf(player);
+              // orderにおけるplayerのindexを探す
+              let order_index = room.order.indexOf(player.player_name);
+              // players_infoからplayerを削除
+              room.players_info.splice(players_info_index, 1);
+              // orderからplayerを削除
+              room.order.splice(order_index, 1);
+              // number_of_playerを減らす
+              room.number_of_player -= 1;
+              // roomを保存
+              room.save((error, room) => {
+                if (error) {
+                  console.error(error);
+                  return;
+                }else{
+                  //ルームから抜ける
+                  socket.leave(data.room_name);
+                  //ソケットを切断
+                  socket.disconnect();
+                }
+              });
+            }
+          });
         });
+              
+
+      socket.on("connect", () => {
+        console.log("New client connected");
+        console.log("socket.id", socket.id);
+    
+      });
         
         socket.on('disconnect', () => {
+
           console.log('Client disconnected');
           Room.findOne(
             { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
@@ -31,7 +75,7 @@ module.exports = (io) => {
                 // orderからplayerを削除
                 room.order.splice(order_index, 1);
                 // number_of_playerを減らす
-                room.number_of_player = room.number_of_player - 1;
+                room.number_of_player -= 1;
                 // roomを保存
                 room.save((error, room) => {
                   if (error) {
@@ -44,9 +88,6 @@ module.exports = (io) => {
           );
         });
                   
-        console.log("New client connected");
-        console.log("socket.id", socket.id);
-      
         socket.on(SocketConst.EMIT.JOIN_ROOM,(payload, callback) => {
           console.log("payload", payload);
           let is_game_started = false;

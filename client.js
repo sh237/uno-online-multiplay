@@ -1,4 +1,5 @@
 const io = require('socket.io-client');
+const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard } = require('./socket-io-common');
 
 const port = 5000;
 const socket = io(`http://localhost:${port}`);
@@ -7,28 +8,10 @@ const clientId = process.argv[2];
 const roomId = process.argv[3];
 console.log(`clientId: ${clientId}  roomId: ${roomId}`);
 
-const SocketConst = {
-    EMIT: {
-      JOIN_ROOM: 'join-room',
-      RECEIVER_CARD: 'receiver-card',
-      FIRST_PLAYER: 'first-player',
-      COLOR_OF_WILD: 'color-of-wild',
-      SHUFFLE_WILD: 'shuffle-wild',
-      NEXT_PLAYER: 'next-player',
-      PLAY_CARD: 'play-card',
-      DRAW_CARD: 'draw-card',
-      PLAY_DRAW_CARD: 'play-draw-card',
-      CHALLENGE: 'challenge',
-      PUBLIC_CARD: 'public-card',
-      SAY_UNO_AND_PLAY_CARD: 'say-uno-and-play-card',
-      POINTED_NOT_SAY_UNO: 'pointed-not-say-uno',
-      SPECIAL_LOGIC: 'special-logic',
-      FINISH_TURN: 'finish-turn',
-      FINISH_GAME: 'finish-game',
-    },
-  };
-
   
+
+var current_information = {room_name:"",player:""}
+
 socket.on('connection', (socket) => {
     console.log('a user connected');
     socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
@@ -46,9 +29,12 @@ socket.on(SocketConst.EMIT.RECEIVER_CARD, (data) => {
     console.log('receiver_card');
     console.log(data);
 });
+socket.on(SocketConst.EMIT.NEXT_PLAYER, (data) => {
+    console.log('next_player');
+    console.log(data);
+    socket.emit('leave_room', { room_name: current_information.room_name, player_name: current_information.player}, (error, data) => {});
+});
 
-
-var current_information = {room_name:"",player:""}
 
 // Serverにメッセージを送信
 socket.emit(SocketConst.EMIT.JOIN_ROOM, { room_name: roomId, player: clientId}, (error, data) => {
