@@ -53,7 +53,10 @@ module.exports = (io) => {
         //   console.log("New client connected");
       
         // });
-        
+        // socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
+
+        // });
     });
 }
+
 

@@ -30,6 +30,7 @@ var app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 socket_io_connect(io);
+socket_io_game(io);
 
 app.use(cors());
 
