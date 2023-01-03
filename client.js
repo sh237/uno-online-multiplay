@@ -42,6 +42,10 @@ socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
     console.log('first_player');
     console.log(data);
 });
+socket.on(SocketConst.EMIT.RECEIVER_CARD, (data) => {
+    console.log('receiver_card');
+    console.log(data);
+});
 
 
 var current_information = {room_name:"",player:""}

@@ -5,7 +5,7 @@ module.exports = (io) => {
         EMIT: {
         //   JOIN_ROOM: 'join-room',
           RECEIVER_CARD: 'receiver-card',
-          FIRST_PLAYER: 'first-player',
+          // FIRST_PLAYER: 'first-player',
           COLOR_OF_WILD: 'color-of-wild',
           SHUFFLE_WILD: 'shuffle-wild',
           NEXT_PLAYER: 'next-player',
@@ -48,15 +48,6 @@ module.exports = (io) => {
         NOTING: 'nothing',
       };
       
-    io.on('connection', socket => {
-        // socket.on("connect", () => {
-        //   console.log("New client connected");
-      
-        // });
-        // socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
-
-        // });
-    });
 }
 
 
