@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useContext } from 'react';
 import { GlobalContext, SocketContext } from './Context.js';
 
@@ -27,11 +27,17 @@ function Game() {
   };
   const [myCards, setMyCards] = useState([]);
   const [isMyTurn, setIsMyTurn] = useState(false);
+  const [isNext, setIsNext] = useState(false);
+  const [isSayUno, setIsSayUno] = useState(false);
   const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
 
-  //
+  //サーバーからゲームの初期設定を受信
   socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
     console.log("first-player-event", data);
+    if(context.playerId===data.first_player){
+      setIsMyTurn(true);
+    }
+    setFieldCard(data.first_card);
   });
   //サーバーからカードを受け取る
   socket.on(SocketConst.EMIT.RECEIVER_CARD, (data) => {
@@ -73,7 +79,11 @@ function Game() {
     setMyCards(
       myCards.filter((card) => (card !== v))
     );
-    socket.emit(SocketConst.EMIT.PLAY_CARD, { "card_play": { "number": v.number, "color": v.color, "special": v.special } });
+    if (isSayUno){
+      socket.emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, { "card_play": { "number": v.number, "color": v.color, "special": v.special } });
+    }else{
+      socket.emit(SocketConst.EMIT.PLAY_CARD, { "card_play": { "number": v.number, "color": v.color, "special": v.special } });
+    }
   };
 
   function drawCard() {
@@ -86,6 +96,10 @@ function Game() {
       <button onClick={drawCard}>
         draw card
       </button>
+      <button onClick={()=>{setIsSayUno(!isSayUno)}}>
+        say uno
+      </button>
+      <p>My turn : {isMyTurn}</p>
       <ul>
         {myCards.map(v => (
           <li onClick={() => selectCard(v)} key={v._id}>
