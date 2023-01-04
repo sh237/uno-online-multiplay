@@ -93,13 +93,10 @@ function Game() {
   return (
     <div className="Game">
       <p>field card:{fieldCard.color} {fieldCard.special} {fieldCard.number}</p>
-      <button onClick={drawCard}>
-        draw card
-      </button>
-      <button onClick={()=>{setIsSayUno(!isSayUno)}}>
-        say uno
-      </button>
-      <p>My turn : {isMyTurn}</p>
+      <button onClick={drawCard}>draw card</button>
+      <button onClick={()=>{setIsSayUno(!isSayUno)}}>say uno</button>
+      <p>My turn : {isMyTurn ? "true" : "false"}</p>
+      <p>say uno:{isSayUno ? "true" : "false"}</p>
       <ul>
         {myCards.map(v => (
           <li onClick={() => selectCard(v)} key={v._id}>
