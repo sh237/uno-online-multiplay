@@ -1,4 +1,4 @@
-const Room = require('./room_data');
+const Room = require('../room_data');
 
 
 const SocketConst = {

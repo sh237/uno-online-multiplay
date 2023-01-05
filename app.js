@@ -5,8 +5,8 @@ const socketio = require('socket.io');
 const http = require('http');
 const cors = require('cors');
 //socket-io.jsにioを渡す
-const socket_io_connect = require('./socket-io-connect');
-const socket_io_game = require('./socket-io-game');
+const socket_io_connect = require('./server/socket-io-connect');
+const socket_io_game = require('./server/socket-io-game');
 
 const options = {
 	useUnifiedTopology : true,
