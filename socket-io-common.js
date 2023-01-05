@@ -51,49 +51,59 @@ module.exports = {
     Color: Color,
     DrawReason: DrawReason,
 
-    checkMustCallDrawCard : function(room_name, player_id) {
+    checkMustCallDrawCard : function(room,room_name, player_id) {
+        if(!room){
+            Room.findOne({room_name: room_name}, (error, room) => {
+                if (error) {
+                    console.error(error);
+                    return;
+                }
+                room = room;
+            });
+        }
         let is_must_call_draw_card = true;
-        Room.findOne({room_name: room_name}, (error, room) => {
-          if (error) {
-            console.error(error);
-            return;
-          }
-          let player = room.players_info.find((player) => {
+        let player = room.players_info.find((player) => {
             return player._id == player_id;
-          });
-          if(player.cards.filter((card) => {
+        });
+
+        if (!player) {
+            console.error('player not found: room_name=' + room_name + ', player_id=' + player_id);
+            console.log('room.players_info:', room.players_info);
+            return;
+        }
+
+        if(player.cards.filter((card) => {
             return card.special == Special.WILD || card.special == Special.WILD_DRAW_4 || card.special == Special.SHUFFLE_WILD || card.special == Special.WHITE_WILD;
-          }).length > 0){
+        }).length > 0){
             is_must_call_draw_card = false;
-          }else if(room.current_field.special == Special.SKIP){
+        }else if(room.current_field.special == Special.SKIP){
             if(player.cards.filter((card) => {
-              return card.color == room.current_field.color || card.special == Special.SKIP;
+            return card.color == room.current_field.color || card.special == Special.SKIP;
             }).length > 0){
-              is_must_call_draw_card = false;
+            is_must_call_draw_card = false;
             }
-          }else if(room.current_field.special == Special.DRAW_2){
+        }else if(room.current_field.special == Special.DRAW_2){
             if(player.cards.filter((card) => {
-              return card.color == room.current_field.color || card.special == Special.DRAW_2;
+            return card.color == room.current_field.color || card.special == Special.DRAW_2;
             }).length > 0){
-              is_must_call_draw_card = false;
+            is_must_call_draw_card = false;
             }
-          }else if(room.current_field.special == Special.REVERSE){
+        }else if(room.current_field.special == Special.REVERSE){
             if(player.cards.filter((card) => {
-              return card.color == room.current_field.color || card.special == Special.REVERSE;
+            return card.color == room.current_field.color || card.special == Special.REVERSE;
             }).length > 0){
-              is_must_call_draw_card = false;
+            is_must_call_draw_card = false;
             }
-          }
-          else{
+        }
+        else{
             //場のカードが数字カードの場合
             if(player.cards.filter((card) => {
-              return card.color == room.current_field.color || card.number == room.current_field.number;
+            return card.color == room.current_field.color || card.number == room.current_field.number;
             }
             ).length > 0){
-              is_must_call_draw_card = false;
+            is_must_call_draw_card = false;
             }
-          }
-        });
+        }
         return is_must_call_draw_card;
-      }
+    }
   };

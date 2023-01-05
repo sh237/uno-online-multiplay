@@ -4,7 +4,6 @@ const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard } = requi
 module.exports = (io) => {
 
     io.on('connection', socket => {
-
       //ルームから抜ける処理
       socket.on('leave_room', (data) => {
         console.log('leave_room');
@@ -195,16 +194,19 @@ module.exports = (io) => {
                 io.sockets.in(room.room_name).emit(SocketConst.EMIT.FIRST_PLAYER, {first_player: room.order[room.current_player], first_card : room.current_field, play_order : room.order });
                 //それぞれにカードを配る。
                 distributeCards(room);
-                let is_must_call_draw_card = checkMustCallDrawCard(room.room_name, room.order[room.current_player]);
-                //各プレイヤーの手札の枚数を配列に保存 形式は、{player_id : number_of_cards, player_id : number_of_cards, ...}というjson形式
-                let number_card_of_player = {};
-                room.players_info.forEach((player) => {
-                  number_card_of_player[player._id] = player.cards.length;
-                });
-                let current_player_soket_id = room.players_info.find((player) => {
-                  return player._id == room.order[room.current_player];
-                }).socket_id;
-                io.to(current_player_soket_id).emit(SocketConst.EMIT.NEXT_PLAYER, { next_player : room.order[(room.current_player < 3 ? room.current_player + 1 : 0)], before_player : room.order[(room.current_player > 0 ? room.current_player - 1 : 3)], card_before : room.current_field, card_of_player : room.players_info[room.current_player].cards, must_call_draw_card : is_must_call_draw_card, turn_right : room.is_reverse, number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
+                setTimeout(() => {
+                  let is_must_call_draw_card = checkMustCallDrawCard(room, room.room_name, room.order[room.current_player]);
+                  //各プレイヤーの手札の枚数を配列に保存 形式は、{player_id : number_of_cards, player_id : number_of_cards, ...}というjson形式
+                  let number_card_of_player = {};
+                  room.players_info.forEach((player) => {
+                    number_card_of_player[player._id] = player.cards.length;
+                  });
+                  let current_player_soket_id = room.players_info.find((player) => {
+                    return player._id == room.order[room.current_player];
+                  }).socket_id;
+                  io.to(current_player_soket_id).emit(SocketConst.EMIT.NEXT_PLAYER, { next_player : room.order[(room.current_player < 3 ? room.current_player + 1 : 0)], before_player : room.order[(room.current_player > 0 ? room.current_player - 1 : 3)], card_before : room.current_field, card_of_player : room.players_info[room.current_player].cards, must_call_draw_card : is_must_call_draw_card, turn_right : room.is_reverse, number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+                },2000);
               });
             }, 1000);
             is_game_started = false;
@@ -299,12 +301,11 @@ module.exports = (io) => {
     //カードを配る
     for(let i=0; i<room.order.length; i++){
       let player_id = room.order[i];
-      let player = room.players_info.find((player) => {
-        return player._id == player_id;
-      });
       for(let j=0; j<7; j++){
         let card = room.deck.splice(Math.floor(Math.random() * room.deck.length), 1)[0];
-        player.cards.push(card);
+        room.players_info.find((player) => {
+          return player._id == player_id;
+        }).cards.push(card);
       }
     }
     console.log("room deck remaining : " + room.deck.length);
