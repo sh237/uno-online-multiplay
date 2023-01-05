@@ -10,6 +10,51 @@ console.log(`clientId: ${clientId}  roomId: ${roomId}`);
 
 var current_information = {room_name:"", player:"", player_id:"", cards:[], current_field:{color:"", special:"", number:0}};
 
+/* イベント名                 ON              EMIT
+  JOIN_ROOM                 
+  RECEIVER_CARD               
+  FIRST_PLAYER              完了     　　　　　
+  COLOR_OF_WILD
+  SHUFFLE_WILD
+  NEXT_PLAYER
+  PLAY_CARD
+  DRAW_CARD
+  PLAY_DRAW_CARD
+  CHALLENGE
+  PUBLIC_CARD
+  SAY_UNO_AND_PLAY_CARD
+  POINTED_NOT_SAY_UNO
+  SPECIAL_LOGIC
+  FINISH_TURN
+  FINISH_GAME
+
+  
+*/
+
+
+
+
+
+/*    実装済み                  */
+let cardsGlobal = [];
+socket.on(SocketConst.EMIT.FIRST_PLAYER, (dataRes) => {
+  console.log(`${dataRes.first_player} is first player.`);
+  console.log(dataRes);
+});
+
+socket.on(SocketConst.EMIT.RECEIVER_CARD, (dataRes) => {
+  console.log(`${id} receive cards :`);
+  console.log(dataRes);
+  const cards = cardsGlobal || [];
+  cardsGlobal = cards.concat(dataRes.cards_receive);
+  console.log(`${SocketConst.EMIT.RECEIVER_CARD} cardsGlobal:`, cardsGlobal);
+});
+
+/*   ここまで  以下はテスト                 */
+
+
+
+
 socket.on('connection', (socket) => {
     console.log('a user connected');
     socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
@@ -19,14 +64,8 @@ socket.on('connection', (socket) => {
   });
 });
 
-socket.on(SocketConst.EMIT.FIRST_PLAYER, (data) => {
-    console.log('first_player');
-    console.log(data);
-});
-socket.on(SocketConst.EMIT.RECEIVER_CARD, (data) => {
-    console.log('receiver_card');
-    console.log(data);
-});
+
+
 socket.on(SocketConst.EMIT.DRAW_CARD, (data) => {
   if(data.is_draw){
     console.log("player:" + data.player + " draw card");
@@ -39,6 +78,7 @@ socket.on(SocketConst.EMIT.DRAW_CARD, (data) => {
     console.log("player:" + data.player + " can't draw card");
   }
 });
+
 
 socket.on(SocketConst.EMIT.NEXT_PLAYER, (data) => {
     console.log('next_player');
@@ -58,7 +98,15 @@ socket.on(SocketConst.EMIT.NEXT_PLAYER, (data) => {
       });
     }else{
       can_play_cards = getCanPlayCards(current_information.current_field, current_information.cards);
-      
+      //can_play_cardsの1枚目を出す
+      if(can_play_cards.length > 0){
+        socket.emit(SocketConst.EMIT.PLAY_CARD, {card_play:can_play_cards[0]}, (error, data) => {
+          if (error) {
+              console.log(error);
+          }
+        });
+      }
+  
     }
 
 

@@ -139,7 +139,7 @@ module.exports = (io) => {
             }
           }else{
             //ルームが存在しない場合
-            Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0, players_info:{player_name: payload.player, socket_id: socket.id}},
+            Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0, players_info:{player_name: payload.player, socket_id: socket.id},number_card_play: 1,number_turn_play:1},
               (error) => {
               if (error) {
                 console.log(error);
@@ -205,7 +205,14 @@ module.exports = (io) => {
                   let current_player_soket_id = room.players_info.find((player) => {
                     return player._id == room.order[room.current_player];
                   }).socket_id;
-                  io.to(current_player_soket_id).emit(SocketConst.EMIT.NEXT_PLAYER, { next_player : room.order[(room.current_player < 3 ? room.current_player + 1 : 0)], before_player : room.order[(room.current_player > 0 ? room.current_player - 1 : 3)], card_before : room.current_field, card_of_player : room.players_info[room.current_player].cards, must_call_draw_card : is_must_call_draw_card, turn_right : room.is_reverse, number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+                  let player = room.players_info.find((player) => {
+                    return player._id == room.order[room.current_player];
+                  });
+                  if(room.is_reverse){
+                    io.to(current_player_soket_id).emit(SocketConst.EMIT.NEXT_PLAYER, { next_player : room.order[(room.current_player > 0 ? room.current_player - 1 : 3)], before_player : room.order[(room.current_player < 3 ? room.current_player + 1 : 0)], card_before : room.current_field, card_of_player : player.cards, must_call_draw_card : is_must_call_draw_card, turn_right : room.is_reverse, number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+                  }else{
+                    io.to(current_player_soket_id).emit(SocketConst.EMIT.NEXT_PLAYER, { next_player : room.order[(room.current_player < 3 ? room.current_player + 1 : 0)], before_player : room.order[(room.current_player > 0 ? room.current_player - 1 : 3)], card_before : room.current_field, card_of_player : player.cards, must_call_draw_card : is_must_call_draw_card, turn_right : room.is_reverse, number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+                  }
                 },2000);
               });
             }, 1000);
@@ -263,16 +270,15 @@ module.exports = (io) => {
       deck.push({color: null, special: Special.WILD_DRAW_4, number: null});
     }
     //シャッフルワイルドカード 1枚の設定
-    deck.push({color: null, special: Special.SHUFFLE_WILD, number: null});
+    deck.push({color: null, special: Special.WILD_SHUFFLE, number: null});
     //白いワイルドカード 3枚の設定
     for(let n=0; n<3; n++){
       deck.push({color: null, special: Special.WHITE_WILD, number: null});
     }
     room.deck = deck;
-    //ランダムにorderを並び替える
-    console.log("room order : " + room.order);
+    //ランダムにdeckとorderを並び替える
+    room.deck = shuffle(room.deck);
     room.order = shuffle(room.order);
-    console.log("room order : " + room.order);
     room.current_player = 0;
     //current_fieldをdeckからランダムに取り出す
     console.log("room deck length : " + room.deck.length);
@@ -300,12 +306,11 @@ module.exports = (io) => {
     console.log("distribute_cards");
     //カードを配る
     for(let i=0; i<room.order.length; i++){
-      let player_id = room.order[i];
+      console.log('player name: ' + room.players_info[i].player_name);
       for(let j=0; j<7; j++){
         let card = room.deck.splice(Math.floor(Math.random() * room.deck.length), 1)[0];
-        room.players_info.find((player) => {
-          return player._id == player_id;
-        }).cards.push(card);
+        room.players_info[i].cards.push(card);
+        console.log(card);
       }
     }
     console.log("room deck remaining : " + room.deck.length);
@@ -321,7 +326,7 @@ module.exports = (io) => {
       let player = room.players_info.find((player) => {
         return player._id == player_id;
       });
-      io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards: player.cards});
+      io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:player.cards});
     }
   }
 }

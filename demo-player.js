@@ -52,7 +52,7 @@ const DrawReason = {
 const SPECIAL_LOGIC_TITLE = '○○○○○○○○○○○○○○○○○○○○○○○○○○○○';
 const ARR_COLOR = [Color.RED, Color.YELLOW, Color.GREEN, Color.BLUE];
 const TEST_TOOL_HOST_PORT = '3000';
-const TIME_DELAY = 10;
+const TIME_DELAY = 3000;
 
 console.log('Start demo player ...');
 
@@ -537,10 +537,12 @@ client.on(SocketConst.EMIT.NEXT_PLAYER, async (dataRes) => {
     dataRes.must_call_draw_card,
   );
 
-  const specialLogicNumRundom = randomByNumber(10);
-  if (specialLogicNumRundom === 0) {
-    sendSpecialLogic({ title: SPECIAL_LOGIC_TITLE });
-  }
+  //一旦スペシャルロジックはコメントアウト
+
+  // const specialLogicNumRundom = randomByNumber(10);
+  // if (specialLogicNumRundom === 0) {
+  //   sendSpecialLogic({ title: SPECIAL_LOGIC_TITLE });
+  // }
 
   if (String(dataRes.must_call_draw_card) === 'true') {
     // If must_call_draw_card = true, Player must be call event draw_card
