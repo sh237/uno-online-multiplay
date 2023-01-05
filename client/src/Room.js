@@ -17,7 +17,8 @@ const Room = () => {
     function leaveRoom() {
         const result = window.confirm('Are you sure?');
         if (result) {
-            socket.emit('leave_room', { room_name: context.roomId, player_name: context.clientId }, (error, data) => {});
+            context.setPlayerId("");
+            socket.emit('leave_room', { room_name: context.roomId, player_name: context.playerName }, (error, data) => {});
             navigate('/');
         } else {
             return;
@@ -31,15 +32,16 @@ const Room = () => {
 
     // Serverにルームに入るためのメッセージを送信
     useEffect(() => {
-        socket.emit(SocketConst.EMIT.JOIN_ROOM, { room_name: context.roomId, player: context.clientId }, (error, data) => {
+        socket.emit(SocketConst.EMIT.JOIN_ROOM, { room_name: context.roomId, player: context.playerName }, (error, data) => {
             if (error) {
                 console.log(error);
                 alert("room is full or error");
                 navigate('/');
             } else {
                 context.setRoomId(data.room_name);
-                context.setClientId(data.player);
-                console.log("data set : ", context.roomId, context.clientId);
+                context.setPlayerName(data.player);
+                context.setPlayerId(data.your_id);
+                console.log("data set : ", data);
             }
         });
     }, []);
@@ -51,12 +53,18 @@ const Room = () => {
             players_.push(v.player_name);
         })
         setPlayers(players_);
-        console.log(players);
+        //console.log("currentplayer",players_);
     });
 
     //サーバーからゲームの開始を受信
     socket.on('startGame', () => {
         navigate('/Game');
+    });
+
+    //サーバーとの接続が切れたときの処理
+    socket.on('disconnect', () => {
+        socket.emit('delete_data', { data: { room_name: context.roomId, player: context.playerName } });
+        navigate('/');
     });
 
     return (
