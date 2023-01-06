@@ -25,11 +25,6 @@ const Room = () => {
         }
     };
 
-    // Serverからメッセージを受信
-    socket.on('server_to_client', (data) => {
-        console.log(JSON.stringify(data.message));
-    });
-
     // Serverにルームに入るためのメッセージを送信
     useEffect(() => {
         socket.emit(SocketConst.EMIT.JOIN_ROOM, { room_name: context.roomId, player: context.playerName }, (error, data) => {
@@ -44,28 +39,32 @@ const Room = () => {
                 console.log("data set : ", data);
             }
         });
+        //サーバーから現在ルームにいるプレイヤー一覧を受信
+        socket.on('currentPlayers', (data) => {
+            const players_ = []
+            data.map((v) => {
+                players_.push(v.player_name);
+            })
+            setPlayers(players_);
+            //console.log("currentplayer",players_);
+        });
+
+        //サーバーからゲームの開始を受信
+        socket.on('startGame', () => {
+            navigate('/Game');
+        });
+
+        //サーバーとの接続が切れたときの処理
+        socket.on('disconnect', () => {
+            socket.emit('delete_data', { data: { room_name: context.roomId, player: context.playerName } });
+            navigate('/');
+        });
+        return () => {
+            // componentWillUnmount のタイミングで実行したい処理を記述
+            socket.off("currentPlayers");
+            socket.off('startGame');
+          }
     }, []);
-
-    //サーバーから現在ルームにいるプレイヤー一覧を受信
-    socket.on('currentPlayers', (data) => {
-        const players_ = []
-        data.map((v) => {
-            players_.push(v.player_name);
-        })
-        setPlayers(players_);
-        //console.log("currentplayer",players_);
-    });
-
-    //サーバーからゲームの開始を受信
-    socket.on('startGame', () => {
-        navigate('/Game');
-    });
-
-    //サーバーとの接続が切れたときの処理
-    socket.on('disconnect', () => {
-        socket.emit('delete_data', { data: { room_name: context.roomId, player: context.playerName } });
-        navigate('/');
-    });
 
     return (
         <div className="Room">
