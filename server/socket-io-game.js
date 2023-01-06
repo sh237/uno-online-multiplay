@@ -176,9 +176,15 @@ module.exports = (io) => {
                     //各プレイヤーに配布されるカード枚数を計算する
                     //sorted_players_info = [{socket_id: ソケットid, _id: プレイヤーid, cards: []},...]
                     //sorted_players_infoの先頭はnext_playerであり、最後がcurrent_player
-                    let sorted_players_info = JSON.parse(JSON.stringify(room.players_info));//deepcopy
+                    let temp = JSON.parse(JSON.stringify(room.players_info));//deepcopy
+                    //sorted_players_infoをroom.orderの順に並び替える
+                    let sorted_players_info = [];
+                    for(let i = 0; i < room.order.length; i++){
+                      let player = temp.find((player) => player._id == room.order[i]);
+                      sorted_players_info.push(player);
+                    }
                     let next_player = getNextPlayer(room);
-                    let next_player_index = room.players_info.findIndex((player) => player._id == next_player._id);
+                    let next_player_index = sorted_players_info.findIndex((player) => player._id == next_player._id);
                     sorted_players_info.slice(next_player_index).concat(sorted_players_info.slice(0, next_player_index));
                     for(let i = 0; i < all_cards.length; i++){
                       sorted_players_info[i % sorted_players_info.length].cards.push(all_cards[i]);
@@ -194,6 +200,7 @@ module.exports = (io) => {
                     }
                     //場の色は前の色にする
                     room.current_field.color = previos_color;
+                    data.card_play.color = previos_color;
                     updateCurrentPlayer(room);
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
                     //saveする
@@ -219,15 +226,15 @@ module.exports = (io) => {
     const getNextPlayer = (room) => {
       if(room.is_reverse){
         if(room.current_player == 0){
-          return room.players_info[3];
+          return room.players_info.find((player) => player._id == room.order[3]);
         }else{
-          return room.players_info[room.current_player - 1];
+          return room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
         }
       }else{
         if(room.current_player == 3){
-          return room.players_info[0];
+          return room.players_info.find((player) => player._id == room.order[0]);
         }else{
-          return room.players_info[room.current_player + 1];
+          return room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
         }
       }
     }
