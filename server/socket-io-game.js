@@ -77,12 +77,22 @@ module.exports = (io) => {
                     
                     //カードを場に出したことをクライアントに通知する
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
-                    //saveする
-                    room.save();
-
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:next_player._id, is_draw:true, can_play_card:false, reason:DrawReason.DRAW_TWO});
                     //次のプレイヤーにドローしたカードを通知する
                     io.to(next_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2],is_penalty:false});
+
+                    //next_playerイベントを発火させるための処理
+                    let next_next_player = getNextPlayer(room);
+                    next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                    let number_card_of_player = {};
+                    room.players_info.forEach((player) => {
+                      number_card_of_player[player._id] = player.cards.length;
+                    });
+                    room.number_turn_play++;
+                    io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.DRAW_2, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
+                    //saveする
+                    room.save();
                   }
                   else if(data.card_play.special == Special.SKIP){
                     //次のプレイヤーをスキップする
@@ -106,6 +116,17 @@ module.exports = (io) => {
 
                     //カードを場に出したことをクライアントに通知する
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
+
+                    //next_playerイベントを発火させるための処理
+                    let next_next_player = getNextPlayer(room);
+                    let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                    let number_card_of_player = {};
+                    room.players_info.forEach((player) => {
+                      number_card_of_player[player._id] = player.cards.length;
+                    });
+                    room.number_turn_play++;
+                    io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
                     //saveする
                     room.save();
                   }
@@ -116,6 +137,17 @@ module.exports = (io) => {
                     updateCurrentPlayer(room);
                     //カードを場に出したことをクライアントに通知する
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
+
+                    //next_playerイベントを発火させるための処理
+                    let next_next_player = getNextPlayer(room);
+                    let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                    let number_card_of_player = {};
+                    room.players_info.forEach((player) => {
+                      number_card_of_player[player._id] = player.cards.length;
+                    });
+                    room.number_turn_play++;
+                    io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
                     //saveする
                     room.save();
                   }
@@ -133,6 +165,17 @@ module.exports = (io) => {
 
                     updateCurrentPlayer(room);
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
+
+                    //next_playerイベントを発火させるための処理
+                    let next_next_player = getNextPlayer(room);
+                    let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                    let number_card_of_player = {};
+                    room.players_info.forEach((player) => {
+                      number_card_of_player[player._id] = player.cards.length;
+                    });
+                    room.number_turn_play++;
+                    io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
                     //saveする
                     room.save();
                   }
@@ -158,12 +201,23 @@ module.exports = (io) => {
 
                     updateCurrentPlayer(room);
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
-                    //saveする
-                    room.save();
 
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:next_player._id, is_draw:true, can_play_card:false, reason:DrawReason.WILD_DRAW_4});
                     //次のプレイヤーにドローしたカードを通知する
                     io.to(next_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2, draw_card3, draw_card4],is_penalty:false});
+
+                    //next_playerイベントを発火させるための処理
+                    let next_next_player = getNextPlayer(room);
+                    next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                    let number_card_of_player = {};
+                    room.players_info.forEach((player) => {
+                      number_card_of_player[player._id] = player.cards.length;
+                    });
+                    room.number_turn_play++;
+                    io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.WILD_DRAW_4, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
+                    //saveする
+                    room.save();
                   }
                   else if(data.card_play.special == Special.WILD_SHUFFLE){
                     //まず全プレイヤーの手札のカードを取得する
@@ -203,6 +257,59 @@ module.exports = (io) => {
                     data.card_play.color = previos_color;
                     updateCurrentPlayer(room);
                     io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
+                    
+                    //next_playerイベントを発火させるための処理
+                    let next_next_player = getNextPlayer(room);
+                    next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                    let number_card_of_player = {};
+                    room.players_info.forEach((player) => {
+                      number_card_of_player[player._id] = player.cards.length;
+                    });
+                    room.number_turn_play++;
+                    io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
+                    //saveする
+                    room.save();
+                  }
+                  else if(data.card_play.special == Special.WHITE_WILD){
+                    //次のプレイヤーを取得する
+                    let next_player = getNextPlayer(room);
+                    //次のプレイヤーをroom.binded_playersに追加する
+                    room.binded_players.push({player_id:next_player._id, remain_turn : 2});
+                    //場の色は前の色にする
+                    room.current_field.color = previos_color;
+                    data.card_play.color = previos_color;
+                    updateCurrentPlayer(room);
+                    io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
+
+                    //next_playerイベントを発火させるための処理
+                    let next_next_player = getNextPlayer(room);
+                    next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                    let number_card_of_player = {};
+                    room.players_info.forEach((player) => {
+                      number_card_of_player[player._id] = player.cards.length;
+                    });
+                    room.number_turn_play++;
+                    io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.WHITE_WILD, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
+                    //saveする
+                    room.save();
+                  }
+                  else if(data.card_play.special == null || data.card_play.number != null){
+
+                    updateCurrentPlayer(room);
+                    io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
+
+                    //next_playerイベントを発火させるための処理
+                    let next_next_player = getNextPlayer(room);
+                    let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                    let number_card_of_player = {};
+                    room.players_info.forEach((player) => {
+                      number_card_of_player[player._id] = player.cards.length;
+                    });
+                    room.number_turn_play++;
+                    io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.WHITE_WILD, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
                     //saveする
                     room.save();
                   }
