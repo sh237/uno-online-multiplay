@@ -87,12 +87,11 @@ function Game() {
     //サーバーからカードを受け取る
     socket.on(SocketConst.EMIT.RECEIVER_CARD, (dataRes) => {
       console.log("on:receive-card-event", dataRes);
-      // const myCards_ = [...myCards];
-      // dataRes.cards_receive.map((v) => {
-      //   myCards_.push(v);
-      // });
-      // setMyCards(myCards_);
-      setMyCards((prevState)=>([...prevState,...dataRes.cards_receive]));
+      if(Array.isArray(dataRes.cards_receive)){
+        setMyCards((prevState)=>([...prevState,...dataRes.cards_receive]));
+      }else{
+        setMyCards((prevState)=>([...prevState,dataRes.cards_receive]));
+      }
     });
     
     socket.on(SocketConst.EMIT.COLOR_OF_WILD, () => {
