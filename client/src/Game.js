@@ -55,8 +55,15 @@ function Game() {
   const ARR_COLOR = [Color.RED, Color.YELLOW, Color.GREEN, Color.BLUE];
   const TIME_DELAY = 10;
   const [myCards, setMyCards] = useState([]);
+  const [playersList, setPlayersList] = useState([]);
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [isSayUno, setIsSayUno] = useState(false);
+  const [canPlayDrowCard,setCanPlayDrowCard] = useState(false);
+  const [canSelectColor,setCanSelectColor] = useState(false);
+  const [displayPointedNotSayUno,setDisplayPointedNotSayUno] = useState(false);
+  const [pointedNotSayUnoResult,setPointedNotSayUnoResult] = useState("");
+  const [sayUnoPlayer,setSayUnoPlayer] = useState("");
+  const [countSpecialLogic,setCountSpecialLogic] = useState(10);
   const [winner, setWinner] = useState("");
   const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
   const [playersCardList,setPlayersCardList] = useState({});
@@ -76,12 +83,14 @@ function Game() {
     console.log(err);
   }
   useEffect(()=>{
+    console.log("socket",socket);
     //サーバーからゲームの初期設定を受信
     socket.on(SocketConst.EMIT.FIRST_PLAYER, (dataRes) => {
       if(context.playerId===dataRes.first_player){
         setIsMyTurn(true);
       }
       setFieldCard(dataRes.first_card);
+      setPlayersList(dataRes.play_order);
     });
 
     //サーバーからカードを受け取る
@@ -95,18 +104,21 @@ function Game() {
     });
     
     socket.on(SocketConst.EMIT.COLOR_OF_WILD, () => {
-      //色を選ばせる処理が必要
-      const colorOfWild = ARR_COLOR[0];
-      const data = { color_of_wild: colorOfWild };
-      sendColorOfWild(data);
+      //色を選ばせる処理
+      setCanSelectColor(true);
     });
     
     socket.on(SocketConst.EMIT.SHUFFLE_WILD, (dataRes) => {
-      setMyCards(dataRes.cards_receive);
+      if(Array.isArray(dataRes.cards_receive)){
+        setMyCards([...dataRes.cards_receive]);
+      }else{
+        setMyCards([dataRes.cards_receive]);
+      }
     });
     
     socket.on(SocketConst.EMIT.PLAY_CARD, (dataRes) => {
-      console.log("on:PLAY_CARD");
+      console.log("on:PLAY_CARD",dataRes);
+      setFieldCard(dataRes.card_play);
       if (dataRes.player === context.playerId && dataRes.card_play){
         setMyCards((prevState)=>{
           let index = prevState.findIndex((card) => {
@@ -125,20 +137,14 @@ function Game() {
     
     socket.on(SocketConst.EMIT.DRAW_CARD, (dataRes) => {
       console.log("on:DRAW_CARD",dataRes);
-      if(dataRes.player===context.playerId){
-        if(dataRes.can_play_draw_card){
-          //はいかいいえの応答をユーザーから受け付ける処理が必要
-          const data = { is_play_card: true };
-          sendPlayDrawCard(data);
-          if(myCards.length==2 && isSayUno){
-            sendSayUnoAndPlayDrawCard();
-          }
-        }
+      if(dataRes.player===context.playerId && dataRes.can_play_draw_card){
+          //はいかいいえの応答をユーザーから受け付ける処理
+          setCanPlayDrowCard(true);
       }
     });
     
     socket.on(SocketConst.EMIT.PLAY_DRAW_CARD, (dataRes) => {
-      console.log("on:PLAY_DRAW_CARD");
+      console.log("on:PLAY_DRAW_CARD",dataRes);
       if (dataRes.player === context.playerId && dataRes.card_play && dataRes.is_play_card){
         setMyCards(myCards.filter((card) => (card !== dataRes.card_play)));
       }
@@ -162,19 +168,10 @@ function Game() {
     });
     
     socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, (dataRes) => {
-      // const cardPlay = dataRes.card_play;
-      // console.log(
-      //   `${dataRes.player} play card ${cardPlay.color} ${
-      //     cardPlay.special || cardPlay.number
-      //   } and say UNO.`,
-      // );
-    
-      // unoDeclared[dataRes.player] = true;
-    
-      // if (dataRes.player === id && cardPlay) {
-      //   cardsGlobal = removeCardOfPlayer(cardPlay, cardsGlobal);
-      //   console.log('cardsGlobal after: ', cardsGlobal);
-      // }
+      //この時もplaycardイベント変えるならsetFieldとかは必要ない
+      if(dataRes.yell_uno){
+        setSayUnoPlayer(`${dataRes.player} yell UNO.`);
+      }
     });
 
     socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_DRAW_CARD, (dataRes) => {
@@ -182,11 +179,12 @@ function Game() {
     });
     
     socket.on(SocketConst.EMIT.POINTED_NOT_SAY_UNO, (dataRes) => {
-      // if (String(dataRes.have_say_uno) === 'true') {
-      //   console.log(`${dataRes.player} have say UNO.`);
-      // } else if (String(dataRes.have_say_uno) === 'false') {
-      //   console.log(`${dataRes.player} no say UNO.`);
-      // }
+      console.log("on:POINTED_NOT_SAY_UNO",dataRes);
+      if(dataRes.have_say_uno){
+        setPointedNotSayUnoResult(`${dataRes.player} have say UNO.`);
+      }else{
+        setPointedNotSayUnoResult(`${dataRes.player} no say UNO.`);
+      }
     });
     
     socket.on(SocketConst.EMIT.FINISH_TURN, (dataRes) => {
@@ -199,13 +197,15 @@ function Game() {
     });
     
     socket.on(SocketConst.EMIT.NEXT_PLAYER, async (dataRes) => {
-      setFieldCard(dataRes.card_before);
+      console.log("on:NEXT_PLAYER",dataRes);
+      //setFieldCard(dataRes.card_before);
+      setIsMyTurn(true);
       if(dataRes.must_call_draw_card){
         //draw2とかもこれでok?
         sendDrawCard();
       }else{
         if (dataRes.next_player===context.playerId){
-          setIsMyTurn(true);
+          
         }
       }
       setPlayersCardList(dataRes.number_card_of_player);
@@ -251,6 +251,7 @@ function Game() {
   }
   
   function sendPlayDrawCard(data) {
+    console.log("emit:sendPlayDrawCard");
     socket.emit(SocketConst.EMIT.PLAY_DRAW_CARD, data, (err) => {
       handleError(SocketConst.EMIT.PLAY_DRAW_CARD, err);
     });
@@ -270,7 +271,7 @@ function Game() {
   }
 
   function sendPointedNotSayUno(data) {
-    console.log(`${SocketConst.EMIT.POINTED_NOT_SAY_UNO} dataReq: `, data);
+    console.log("emit:POINTED_NOT_SAY_UNO", data);
     socket.emit(SocketConst.EMIT.POINTED_NOT_SAY_UNO, data, (err) => {
       handleError(SocketConst.EMIT.POINTED_NOT_SAY_UNO, err);
     });
@@ -318,14 +319,78 @@ function Game() {
       sendDrawCard();
     }
   }
+  //引いたカードを出すか出さないかの処理
+  function whetherDrawCard(v){
+    setCanPlayDrowCard(false);
+    const data = { is_play_card: v };
+    if(myCards.length==2 && isSayUno){
+      sendSayUnoAndPlayDrawCard();
+    }
+    sendPlayDrawCard(data);
+  }
+  //color-of-wildの色を選ぶ処理
+  function selectColor(v){
+    setCanSelectColor(false);
+    const colorOfWild = ARR_COLOR[v];
+    const data = { color_of_wild: colorOfWild };
+    sendColorOfWild(data);
+  }
+
+  function onSpecialLogic(){
+    if(countSpecialLogic==0){
+      return
+    }
+    setCountSpecialLogic((prevState)=>(prevState-1));
+    sendSpecialLogic({title:SPECIAL_LOGIC_TITLE});
+  }
+
+  function onPointedNotSayUno(v){
+    const data = {target:v}
+    sendPointedNotSayUno(data);
+  }
 
   return (
     <div className="Game">
       <p>field card:{fieldCard.color} {fieldCard.special} {fieldCard.number}</p>
       <button onClick={drawCard}>draw card</button>
       <button onClick={()=>{setIsSayUno(!isSayUno)}}>say uno</button>
+      <button onClick={() => onSpecialLogic()}>special logic {countSpecialLogic}</button>
       <p>My turn : {isMyTurn ? "true" : "false"}</p>
       <p>say uno:{isSayUno ? "true" : "false"}</p>
+      {sayUnoPlayer && <div>
+        <p>{sayUnoPlayer}</p>
+        <button onClick={setSayUnoPlayer("")}>close</button>
+      </div>}
+      
+      <div>
+        <p>pointed not say uno</p>
+        <button onClick={()=>{setDisplayPointedNotSayUno(!displayPointedNotSayUno)}}>{!displayPointedNotSayUno ? "open" : "close"}</button>
+        {displayPointedNotSayUno && <div>
+          <p>select target player</p>
+          {playersList.map((v)=>{
+            if(v!=context.playerId){
+              return <button onClick={()=>{onPointedNotSayUno(v)}} key={v}>{v}</button>
+            }
+          })
+          }
+        </div>}
+        {pointedNotSayUnoResult && <div>
+          <p>{pointedNotSayUnoResult}</p>
+          <button onClick={setPointedNotSayUnoResult("")}>close</button>
+        </div>}
+      </div>
+      {canPlayDrowCard && <div>
+        <p>Do you play the card you drew?</p>
+        <button onClick={()=>{whetherDrawCard(true)}}>yes</button>
+        <button onClick={()=>{whetherDrawCard(false)}}>no</button>
+      </div>}
+      {canSelectColor && <div>
+        <p>Do you play the card you drew?</p>
+        <button onClick={()=>{selectColor(0)}}>red</button>
+        <button onClick={()=>{selectColor(1)}}>yellow</button>
+        <button onClick={()=>{selectColor(2)}}>gleen</button>
+        <button onClick={()=>{selectColor(3)}}>blue</button>
+      </div>}
       <ul>
         {myCards.map((v,i) => (
           <li onClick={() => selectCard(v)} key={i}>

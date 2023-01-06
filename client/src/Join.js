@@ -10,7 +10,10 @@ const Join = () => {
     function joinRoom() {
         const player_ = context.playerName.replace(/\s+/g, "");
         const room_ = context.roomId.replace(/\s+/g, "");
-        //英数字チェックはできてない
+        if(!(player_.match(/^[A-Za-z0-9]*$/) && room_.match(/^[A-Za-z0-9]*$/))){
+            alert("use alphabet or number");
+            return;
+        }
         if (!context.playerName || !context.roomId) {
             alert("enter something");
             return;
@@ -33,7 +36,7 @@ const Join = () => {
     return (
         <div className="Join">
             <h1>Welcome</h1>
-            <p>enter id</p>
+            <p>enter name</p>
             <input 
                 value={context.playerName} 
                 autoFocus={true}
