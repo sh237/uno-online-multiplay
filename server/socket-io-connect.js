@@ -1,5 +1,5 @@
 const Room = require('../room_data');
-const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard } = require('./socket-io-common');
+const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard, shuffle } = require('./socket-io-common');
 
 module.exports = (io) => {
 
@@ -277,7 +277,7 @@ module.exports = (io) => {
     }
     room.deck = deck;
     //ランダムにdeckとorderを並び替える
-    room.deck = shuffle(room.deck);
+    // room.deck = shuffle(room.deck);
     room.order = shuffle(room.order);
     room.current_player = 0;
     //current_fieldをdeckからランダムに取り出す
@@ -293,13 +293,6 @@ module.exports = (io) => {
     });
   }
 
-  const shuffle = ([...array]) => {
-    for (let i = array.length - 1; i >= 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-  }
 
   //カードを配る関数
   const distributeCards = (room) => {

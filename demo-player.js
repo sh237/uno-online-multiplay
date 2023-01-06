@@ -548,15 +548,17 @@ client.on(SocketConst.EMIT.NEXT_PLAYER, async (dataRes) => {
     // If must_call_draw_card = true, Player must be call event draw_card
     sendDrawCard();
     return;
-  } else if (cardsValid.length > 0) {
-    //  If cardsValid.length > 0, Player can play card from array cardsValid
-    executePlay(cards.length, cardsValid);
-    return;
-  } else if (cardsWild.length > 0) {
-    // cardsWild.length > 0, Player can play card from array cardsWild
-    executePlay(cards.length, cardsWild);
-    return;
-  } else if (cardsWild4.length > 0) {
+  }
+  // else if (cardsValid.length > 0) {
+  //   //  If cardsValid.length > 0, Player can play card from array cardsValid
+  //   executePlay(cards.length, cardsValid);
+  //   return;
+  // } else if (cardsWild.length > 0) {
+  //   // cardsWild.length > 0, Player can play card from array cardsWild
+  //   executePlay(cards.length, cardsWild);
+  //   return;
+  // } 
+  else if (cardsWild4.length > 0) {
     // If cardsWild4.length > 0, Player can play card from array cardsWild4
     executePlay(cards.length, cardsWild4);
     return;

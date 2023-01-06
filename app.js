@@ -34,12 +34,10 @@ socket_io_game(io);
 app.use(cors());
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
 var roomsRouter = require('./routes/rooms');
 
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
 app.use('/rooms', roomsRouter );
 
 server.listen(PORT, () => console.log(`Server has started on port ${PORT}`));

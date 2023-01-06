@@ -1,5 +1,5 @@
 const Room = require('../room_data');
-const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard } = require('./socket-io-common');
+const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard, shuffle } = require('./socket-io-common');
 
 module.exports = (io) => {
   io.on('connection', socket => {
@@ -18,23 +18,18 @@ module.exports = (io) => {
               console.log('inside draw card');
               //ドローできるのかサーバー側でも確認
               console.log('checkMustCallDrawCard', checkMustCallDrawCard(room, room.room_name, player._id));
-              if(checkMustCallDrawCard(room, room.room_name, player._id)){
-                //ドローする
-                let draw_card = room.deck.shift();
-                //ドローしたカードをプレイヤーの手札に加える
+              //ドローする
+              let draw_card = room.deck.shift();
+              //ドローしたカードをプレイヤーの手札に加える
 
-                // room.players_info.find((player) => {
-                //   return player.socket_id == socket.id;
-                // }).cards.push(draw_card);
-                player.cards.push(draw_card);
-                //saveする
-                room.save();
-                socket.emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_card});
-                io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, });
-              }else{
-                //ドローしない
-                io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:false});
-              }
+              // room.players_info.find((player) => {
+              //   return player.socket_id == socket.id;
+              // }).cards.push(draw_card);
+              player.cards.push(draw_card);
+              //saveする
+              room.save();
+              socket.emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_card});
+              io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, });
             }
           });
         });
@@ -61,6 +56,7 @@ module.exports = (io) => {
                 if(index != -1){
                   //プレイヤーが持っているカードの中にこのカードがある
                   //カードを場に出す
+                  let previos_color = room.current_field.color;
                   room.current_field = data.card_play;
                   room.number_card_play++;
                   //カードをプレイヤーの手札から削除する
@@ -170,7 +166,38 @@ module.exports = (io) => {
                     io.to(next_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2, draw_card3, draw_card4],is_penalty:false});
                   }
                   else if(data.card_play.special == Special.WILD_SHUFFLE){
-
+                    //まず全プレイヤーの手札のカードを取得する
+                    let all_cards = [];
+                    for(let i = 0; i < room.players_info.length; i++){
+                      all_cards = all_cards.concat(room.players_info[i].cards);
+                    }
+                    //all_cardsをシャッフルする
+                    all_cards = shuffle(all_cards);
+                    //各プレイヤーに配布されるカード枚数を計算する
+                    //sorted_players_info = [{socket_id: ソケットid, _id: プレイヤーid, cards: []},...]
+                    //sorted_players_infoの先頭はnext_playerであり、最後がcurrent_player
+                    let sorted_players_info = JSON.parse(JSON.stringify(room.players_info));//deepcopy
+                    let next_player = getNextPlayer(room);
+                    let next_player_index = room.players_info.findIndex((player) => player._id == next_player._id);
+                    sorted_players_info.slice(next_player_index).concat(sorted_players_info.slice(0, next_player_index));
+                    for(let i = 0; i < all_cards.length; i++){
+                      sorted_players_info[i % sorted_players_info.length].cards.push(all_cards[i]);
+                    }
+                    //各プレイヤーの手札を更新する (player._idが一致するものを探して、cardsを更新する)
+                    for(let i = 0; i < sorted_players_info.length; i++){
+                      let player = room.players_info.find((player) => player._id == sorted_players_info[i]._id);
+                      player.cards = sorted_players_info[i].cards;
+                    }
+                    //各プレイヤーに通知する。
+                    for(let i = 0; i < room.players_info.length; i++){
+                      io.to(room.players_info[i].socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:room.players_info[i].cards, is_penalty:false});
+                    }
+                    //場の色は前の色にする
+                    room.current_field.color = previos_color;
+                    updateCurrentPlayer(room);
+                    io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:data.card_play});
+                    //saveする
+                    room.save();
                   }
 
                 }else{
