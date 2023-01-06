@@ -4,7 +4,7 @@ import { GlobalContext, SocketContext } from './Context.js';
 
 function Game() {
   const context = useContext(GlobalContext);
-  const socket = useContext(SocketContext);  
+  const socket = useContext(SocketContext);
   const SocketConst = {
     EMIT: {
       //JOIN_ROOM: 'join-room',
@@ -57,7 +57,7 @@ function Game() {
   const [myCards, setMyCards] = useState([]);
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [isSayUno, setIsSayUno] = useState(false);
-  const [winner, setWinner] = useState(false);
+  const [winner, setWinner] = useState("");
   const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
   const [playersCardList,setPlayersCardList] = useState({});
 
@@ -78,7 +78,6 @@ function Game() {
   useEffect(()=>{
     //サーバーからゲームの初期設定を受信
     socket.on(SocketConst.EMIT.FIRST_PLAYER, (dataRes) => {
-      console.log("on:first-player-event", dataRes);
       if(context.playerId===dataRes.first_player){
         setIsMyTurn(true);
       }
@@ -126,7 +125,7 @@ function Game() {
     });
     
     socket.on(SocketConst.EMIT.DRAW_CARD, (dataRes) => {
-      console.log("on:DRAW_CARD");
+      console.log("on:DRAW_CARD",dataRes);
       if(dataRes.player===context.playerId){
         if(dataRes.can_play_draw_card){
           //はいかいいえの応答をユーザーから受け付ける処理が必要
@@ -227,7 +226,7 @@ function Game() {
       socket.off(SocketConst.EMIT.FINISH_TURN);
       socket.off(SocketConst.EMIT.NEXT_PLAYER);
     }
-  },[]);
+  },[context.playerId]);
 
   
   
@@ -305,8 +304,9 @@ function Game() {
       console.log("invalid play card");
       return;
     }
-
+    //カードを出せないように
     setIsMyTurn(false);
+    //emit
     if (isSayUno){
       sendSayUnoPlayCard({ "card_play": { "number": v.number, "color": v.color, "special": v.special } });
     }else{
