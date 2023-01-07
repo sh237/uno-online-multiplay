@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useContext } from 'react';
+import { redirect } from 'react-router-dom';
 import { GlobalContext, SocketContext } from './Context.js';
 
 function Game() {
@@ -56,6 +57,7 @@ function Game() {
   const TIME_DELAY = 10;
   const [myCards, setMyCards] = useState([]);
   const [playersList, setPlayersList] = useState([]);
+  const [playersCardList,setPlayersCardList] = useState({});
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [isSayUno, setIsSayUno] = useState(false);
   const [canPlayDrowCard,setCanPlayDrowCard] = useState(false);
@@ -66,7 +68,6 @@ function Game() {
   const [countSpecialLogic,setCountSpecialLogic] = useState(10);
   const [winner, setWinner] = useState("");
   const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
-  const [playersCardList,setPlayersCardList] = useState({});
 
   /**
   * 共通エラー処理
@@ -91,6 +92,17 @@ function Game() {
       }
       setFieldCard(dataRes.first_card);
       setPlayersList(dataRes.play_order);
+      const playOrder=dataRes.play_order;
+      const result = playOrder.indexOf(context.playerId);
+      if(result!=-1){
+        playOrder.splice(result,1);
+      }
+      const playersCardList_={}
+      playOrder.forEach((v) => {
+        playersCardList_[v]=[0,0,0,0,0,0,0];
+      });
+      console.log(playersCardList_)
+      setPlayersCardList(playersCardList_);
     });
 
     //サーバーからカードを受け取る
@@ -109,6 +121,7 @@ function Game() {
     });
     
     socket.on(SocketConst.EMIT.SHUFFLE_WILD, (dataRes) => {
+      //多分ここでカード枚数(playersCardList)壊れる
       if(Array.isArray(dataRes.cards_receive)){
         setMyCards([...dataRes.cards_receive]);
       }else{
@@ -121,7 +134,7 @@ function Game() {
       setFieldCard(dataRes.card_play);
       if (dataRes.player === context.playerId && dataRes.card_play){
         setMyCards((prevState)=>{
-          let index = prevState.findIndex((card) => {
+          const index = prevState.findIndex((card) => {
             return card.color == dataRes.card_play.color && card.special == dataRes.card_play.special && card.number == dataRes.card_play.number;
           });
           if(index!==-1){
@@ -132,6 +145,13 @@ function Game() {
             return prevState;
           }
         })
+      }else if (dataRes.player !== context.playerId && dataRes.card_play){
+        setPlayersCardList((prevState) => {
+          const arr = prevState[dataRes.player];
+          arr.shift();
+          console.log(arr);
+          return { ...prevState, [dataRes.player]: arr };
+        });
       }
     });
     
@@ -140,6 +160,12 @@ function Game() {
       if(dataRes.player===context.playerId && dataRes.can_play_draw_card){
           //はいかいいえの応答をユーザーから受け付ける処理
           setCanPlayDrowCard(true);
+      }else if(dataRes.player!==context.playerId && dataRes.is_draw){
+        setPlayersCardList((prevState) => {
+          const arr = prevState[dataRes.player];
+          arr.push(0);
+          return { ...prevState, [dataRes.player]: arr };
+        });
       }
     });
     
@@ -208,7 +234,7 @@ function Game() {
           
         }
       }
-      setPlayersCardList(dataRes.number_card_of_player);
+      //setPlayersCardList(dataRes.number_card_of_player);
     });
     return () => {
       socket.off(SocketConst.EMIT.FIRST_PLAYER);
@@ -350,54 +376,70 @@ function Game() {
   }
 
   return (
-    <div className="Game">
-      <p>field card:{fieldCard.color} {fieldCard.special} {fieldCard.number}</p>
-      <button onClick={drawCard}>draw card</button>
-      <button onClick={()=>{setIsSayUno(!isSayUno)}}>say uno</button>
-      <button onClick={() => onSpecialLogic()}>special logic {countSpecialLogic}</button>
-      <p>My turn : {isMyTurn ? "true" : "false"}</p>
-      <p>say uno:{isSayUno ? "true" : "false"}</p>
-      {sayUnoPlayer && <div>
-        <p>{sayUnoPlayer}</p>
-        <button onClick={setSayUnoPlayer("")}>close</button>
-      </div>}
-      
-      <div>
-        <p>pointed not say uno</p>
-        <button onClick={()=>{setDisplayPointedNotSayUno(!displayPointedNotSayUno)}}>{!displayPointedNotSayUno ? "open" : "close"}</button>
-        {displayPointedNotSayUno && <div>
-          <p>select target player</p>
-          {playersList.map((v)=>{
-            if(v!=context.playerId){
-              return <button onClick={()=>{onPointedNotSayUno(v)}} key={v}>{v}</button>
-            }
-          })
-          }
+    <div className="game">
+      <div className="field">
+        <p className="field-card">field card:{fieldCard.color} {fieldCard.special} {fieldCard.number}</p>
+        <button onClick={drawCard}>draw card</button>
+        <button onClick={()=>{setIsSayUno(!isSayUno)}}>say uno</button>
+        <button onClick={() => onSpecialLogic()}>special logic {countSpecialLogic}</button>
+        <p>My turn : {isMyTurn ? "true" : "false"}</p>
+        <p>say uno:{isSayUno ? "true" : "false"}</p>
+        {sayUnoPlayer && <div>
+          <p>{sayUnoPlayer}</p>
+          <button onClick={setSayUnoPlayer("")}>close</button>
         </div>}
-        {pointedNotSayUnoResult && <div>
-          <p>{pointedNotSayUnoResult}</p>
-          <button onClick={setPointedNotSayUnoResult("")}>close</button>
+        
+        <div>
+          <p>pointed not say uno</p>
+          <button onClick={()=>{setDisplayPointedNotSayUno(!displayPointedNotSayUno)}}>{!displayPointedNotSayUno ? "open" : "close"}</button>
+          {displayPointedNotSayUno && <div>
+            <p>select target player</p>
+            {playersList.map((v)=>{
+              if(v!=context.playerId){
+                return <button onClick={()=>{onPointedNotSayUno(v)}} key={v}>{v}</button>
+              }
+            })
+            }
+          </div>}
+          {pointedNotSayUnoResult && <div>
+            <p>{pointedNotSayUnoResult}</p>
+            <button onClick={setPointedNotSayUnoResult("")}>close</button>
+          </div>}
+        </div>
+        {canPlayDrowCard && <div>
+          <p>Do you play the card you drew?</p>
+          <button onClick={()=>{whetherDrawCard(true)}}>yes</button>
+          <button onClick={()=>{whetherDrawCard(false)}}>no</button>
+        </div>}
+        {canSelectColor && <div>
+          <p>Do you play the card you drew?</p>
+          <button onClick={()=>{selectColor(0)}}>red</button>
+          <button onClick={()=>{selectColor(1)}}>yellow</button>
+          <button onClick={()=>{selectColor(2)}}>gleen</button>
+          <button onClick={()=>{selectColor(3)}}>blue</button>
         </div>}
       </div>
-      {canPlayDrowCard && <div>
-        <p>Do you play the card you drew?</p>
-        <button onClick={()=>{whetherDrawCard(true)}}>yes</button>
-        <button onClick={()=>{whetherDrawCard(false)}}>no</button>
-      </div>}
-      {canSelectColor && <div>
-        <p>Do you play the card you drew?</p>
-        <button onClick={()=>{selectColor(0)}}>red</button>
-        <button onClick={()=>{selectColor(1)}}>yellow</button>
-        <button onClick={()=>{selectColor(2)}}>gleen</button>
-        <button onClick={()=>{selectColor(3)}}>blue</button>
-      </div>}
-      <ul>
-        {myCards.map((v,i) => (
-          <li onClick={() => selectCard(v)} key={i}>
-            {v.color} {v.special} {v.number}
-          </li>
-        ))}
-      </ul>
+
+      <div className="player-card player1">
+          {myCards.map((v,i) => (
+              <p onClick={() => selectCard(v)} key={i} className="card card-hover">
+                  {v.color} {v.special} {v.number}
+              </p>
+          ))}
+      </div>
+
+      {Object.keys(playersCardList).map((key,i) => (
+        <div key={i} className={`player-card player${i+2} `}>
+          {playersCardList[key].map((v,i)=>(
+            <p key={i} className="card"></p>
+          ))}
+        </div>
+      ))}
+
+
+
+      
+     
     </div>
   );
 }
