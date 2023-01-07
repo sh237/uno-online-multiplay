@@ -139,7 +139,7 @@ module.exports = (io) => {
             }
           }else{
             //ルームが存在しない場合
-            Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0, players_info:{player_name: payload.player, socket_id: socket.id},number_card_play: 1,number_turn_play:1},
+            Room.create({room_name: payload.room_name, number_of_player: 1, is_reverse:false, current_player:0, players_info:{player_name: payload.player, socket_id: socket.id},number_card_play: 1,number_turn_play:1, uno_declared:[]},
               (error) => {
               if (error) {
                 console.log(error);

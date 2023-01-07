@@ -52,7 +52,7 @@ const DrawReason = {
 const SPECIAL_LOGIC_TITLE = '○○○○○○○○○○○○○○○○○○○○○○○○○○○○';
 const ARR_COLOR = [Color.RED, Color.YELLOW, Color.GREEN, Color.BLUE];
 const TEST_TOOL_HOST_PORT = '3000';
-const TIME_DELAY = 3000;
+const TIME_DELAY = 15000;
 
 console.log('Start demo player ...');
 

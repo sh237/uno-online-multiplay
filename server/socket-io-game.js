@@ -3,8 +3,8 @@ const { SocketConst, Special, Color, DrawReason, checkMustCallDrawCard, shuffle 
 
 module.exports = (io) => {
   io.on('connection', socket => {
+
     socket.on(SocketConst.EMIT.DRAW_CARD, () => {
-        //soket_idからルーム、プレイヤーの検索を行う
         Room.findOne(
           { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
             if (error) {
@@ -25,55 +25,74 @@ module.exports = (io) => {
 
               //ドローしたカードが場に出せるかを確認
               let is_playable = false;
-              if(draw_card.special == Special.WHITE_WILD ||  draw_card.special == Special.WILD_DRAW_4 || draw_card.special == Special.WILD || draw_card.special == Special.WILD_SHUFFLE || room.current_field.special == draw_card.special || room.current_field.color == draw_card.color || room.current_field.number == draw_card.number){
+              if(draw_card.special == Special.WHITE_WILD ||  draw_card.special == Special.WILD_DRAW_4 || draw_card.special == Special.WILD || draw_card.special == Special.WILD_SHUFFLE){
+                is_playable = true;
+              }
+              else if ((room.current_field.special != null && room.current_field.special == draw_card.special) || ((room.current_field.color != null) && room.current_field.color == draw_card.color) || ((room.current_field.number != null ) && room.current_field.number == draw_card.number)){
                 is_playable = true;
               }
 
               //saveする
               room.save();
               socket.emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_card});
+
               io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, can_play_draw_card:is_playable});
+
+              if(!is_playable){
+                //next_playerイベントを発火させるための処理
+                let next_player = getNextPlayer(room);
+                updateCurrentPlayer(room);
+                let next_next_player = getNextPlayer(room);
+                let number_card_of_player = {};
+                room.players_info.forEach((player) => {
+                  number_card_of_player[player._id] = player.cards.length;
+                });
+                room.number_turn_play++;
+                io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+              }
+            }
+        });
+    });
+
+    socket.on(SocketConst.EMIT.PLAY_DRAW_CARD, (data) => {
+      if(data.is_play){
+        playCard(data.card_play, socket, SocketConst.EMIT.PLAY_DRAW_CARD);
+      }else{
+        Room.findOne(
+          { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
+            if (error) {
+              console.error(error);
+              return;
+            }
+            if(room != null){
+              let player = room.players_info.find((player) => {
+                return player.socket_id == socket.id;
+              });
+              //next_playerイベントを発火させるための処理
+              let next_player = getNextPlayer(room);
+              updateCurrentPlayer(room);
+              let next_next_player = getNextPlayer(room);
+              let number_card_of_player = {};
+              room.players_info.forEach((player) => {
+                number_card_of_player[player._id] = player.cards.length;
+              });
+              room.number_turn_play++;
+              io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+
             }
           });
-        });
+      }
+    });
 
-        socket.on(SocketConst.EMIT.PLAY_DRAW_CARD, (data) => {
-          if(data.is_play){
-            playCard(data.card_play, socket, SocketConst.EMIT.PLAY_DRAW_CARD);
-          }else{
-            Room.findOne(
-              { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
-                if (error) {
-                  console.error(error);
-                  return;
-                }
-                if(room != null){
-                  let player = room.players_info.find((player) => {
-                    return player.socket_id == socket.id;
-                  });
-                  //next_playerイベントを発火させるための処理
-                  let next_player = getNextPlayer(room);
-                  updateCurrentPlayer(room);
-                  let next_next_player = getNextPlayer(room);
-                  let number_card_of_player = {};
-                  room.players_info.forEach((player) => {
-                    number_card_of_player[player._id] = player.cards.length;
-                  });
-                  room.number_turn_play++;
-                  io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+    socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, (data) => {
+      //data: {card_play:{color:String,special:String,number:Number}}
+      playCard(data.card_play, socket, SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD);
+    });
 
-                }
-              });
-          }
-
-        });
-
-        socket.on(SocketConst.EMIT.PLAY_CARD, (data) => {
-          //data: {card_play:{color:String,special:String,number:Number}}
-          //まずこのカードをプレイできるのか確認する
-          //soket_idからルーム、プレイヤーの検索を行う
-          playCard(data.card_play, socket, SocketConst.EMIT.PLAY_CARD);
-        });
+    socket.on(SocketConst.EMIT.PLAY_CARD, (data) => {
+      //data: {card_play:{color:String,special:String,number:Number}}
+      playCard(data.card_play, socket, SocketConst.EMIT.PLAY_CARD);
+    });
 
     const getNextPlayer = (room) => {
       if(room.is_reverse){
@@ -123,6 +142,9 @@ module.exports = (io) => {
       });
     };
 
+    const checkIfUnoDeclare = (room, socket_id) => {
+    };
+
     const playCard = (card_play, socket, socketEvent) => {
       Room.findOne(
         { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
@@ -138,7 +160,6 @@ module.exports = (io) => {
             let index = player.cards.findIndex((card) => {
               return card.color == card_play.color && card.special == card_play.special && card.number == card_play.number;
             });
-            console.log("index:" + index);
             if(index != -1){
               //プレイヤーが持っているカードの中にこのカードがある
               //カードを場に出す
@@ -160,12 +181,39 @@ module.exports = (io) => {
 
                 next_player.cards.push(draw_card1);
                 next_player.cards.push(draw_card2);
-                
+
                 //カードを場に出したことをクライアントに通知する
                 if(socketEvent == SocketConst.EMIT.PLAY_CARD){
+                  //room.uno_declaredにプレイヤーのidがあるか確認し、あれば削除する
+                  if(room.uno_declared.length > 0){
+                    let index = room.uno_declared.findIndex((id) => {
+                      return id == player._id;
+                    });
+                    if(index != -1){
+                      room.uno_declared.splice(index,1);
+                    }
+                  }
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:card_play});
                 }else if (socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
+                  //room.uno_declaredにプレイヤーのidがあるか確認し、あれば削除する
+                  if(room.uno_declared.length > 0){
+                    let index = room.uno_declared.findIndex((id) => {
+                      return id == player._id;
+                    });
+                    if(index != -1){
+                      room.uno_declared.splice(index,1);
+                    }
+                  }
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_DRAW_CARD, {player:player._id, card_play:card_play, is_play_card:true});
+                }else if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+                  //room.uno_declaredにプレイヤーのidがあるか確認し、なければ追加する
+                  let index = room.uno_declared.findIndex((id) => {
+                    return id == player._id;
+                  });
+                  if(index == -1){
+                    room.uno_declared.push(player._id);
+                  }
+                  io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
                 io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:next_player._id, is_draw:true, can_play_card:false, reason:DrawReason.DRAW_TWO});
                 //次のプレイヤーにドローしたカードを通知する
@@ -209,6 +257,9 @@ module.exports = (io) => {
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:card_play});
                 }else if (socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_DRAW_CARD, {player:player._id, card_play:card_play, is_play_card:true});
+                }else if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+                  room.uno_declared.push(player._id);
+                  io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
 
                 //next_playerイベントを発火させるための処理
@@ -234,6 +285,9 @@ module.exports = (io) => {
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:card_play});
                 }else if (socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_DRAW_CARD, {player:player._id, card_play:card_play, is_play_card:true});
+                }else if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+                  room.uno_declared.push(player._id);
+                  io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
 
                 //next_playerイベントを発火させるための処理
@@ -266,6 +320,9 @@ module.exports = (io) => {
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:card_play});
                 }else if (socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_DRAW_CARD, {player:player._id, card_play:card_play, is_play_card:true});
+                }else if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+                  room.uno_declared.push(player._id);
+                  io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
 
                 //next_playerイベントを発火させるための処理
@@ -306,6 +363,9 @@ module.exports = (io) => {
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:card_play});
                 }else if (socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_DRAW_CARD, {player:player._id, card_play:card_play, is_play_card:true});
+                }else if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+                  room.uno_declared.push(player._id);
+                  io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
 
                 io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:next_player._id, is_draw:true, can_play_card:false, reason:DrawReason.WILD_DRAW_4});
@@ -366,6 +426,9 @@ module.exports = (io) => {
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:card_play});
                 }else if (socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_DRAW_CARD, {player:player._id, card_play:card_play, is_play_card:true});
+                }else if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+                  room.uno_declared.push(player._id);
+                  io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
                 
                 //next_playerイベントを発火させるための処理
@@ -394,6 +457,9 @@ module.exports = (io) => {
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:card_play});
                 }else if (socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_DRAW_CARD, {player:player._id, card_play:card_play, is_play_card:true});
+                }else if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+                  room.uno_declared.push(player._id);
+                  io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
 
                 //next_playerイベントを発火させるための処理
@@ -416,6 +482,9 @@ module.exports = (io) => {
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_CARD, {player:player._id, card_play:card_play});
                 }else if (socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.PLAY_DRAW_CARD, {player:player._id, card_play:card_play, is_play_card:true});
+                }else if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+                  room.uno_declared.push(player._id);
+                  io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
 
                 //next_playerイベントを発火させるための処理
