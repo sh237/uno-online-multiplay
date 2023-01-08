@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useContext } from 'react';
-import { redirect } from 'react-router-dom';
 import { GlobalContext, SocketContext } from './Context.js';
 
 function Game() {
@@ -378,8 +377,39 @@ function Game() {
   return (
     <div className="game">
       <div className="field">
-        <p className="field-card">field card:{fieldCard.color} {fieldCard.special} {fieldCard.number}</p>
-        <button onClick={drawCard}>draw card</button>
+        <div className="Deck">
+          <div onClick={drawCard} className="card black">
+            <div className="ellipse red">
+              <p className="logo solid-shadow">uno</p>
+            </div>
+          </div>
+          <div className={`card ${fieldCard.color} `}>
+            <div className="ellipse">
+              {(fieldCard.number || fieldCard.number==0) && <p className="number solid-shadow">{fieldCard.number}</p>}
+              {fieldCard.special=="draw_2" && <div>
+                  <p className={`special-${fieldCard.special}-1`}></p>
+                  <p className={`special-${fieldCard.special}-2`}></p>
+              </div>}
+              {fieldCard.special=="skip" && <div>
+                  <p className={`special-${fieldCard.special}-1`}></p>
+                  <p className={`special-${fieldCard.special}-2`}></p>
+              </div>}
+              {fieldCard.special=="reverse" && <div>
+                  <p className={`special-${fieldCard.special}-1`}></p>
+                  <p className={`special-${fieldCard.special}-2`}></p>
+                  <p className={`special-${fieldCard.special}-3`}></p>
+                  <p className={`special-${fieldCard.special}-4`}></p>
+              </div>}
+              {fieldCard.special=="wild_draw_4" && <div>
+                  <p className={`special-${fieldCard.special}-1 yellow`}></p>
+                  <p className={`special-${fieldCard.special}-2 blue`}></p>
+                  <p className={`special-${fieldCard.special}-3 red`}></p>
+                  <p className={`special-${fieldCard.special}-4 green`}></p>
+              </div>}
+            </div>
+          </div>
+        </div>
+
         <button onClick={()=>{setIsSayUno(!isSayUno)}}>say uno</button>
         <button onClick={() => onSpecialLogic()}>special logic {countSpecialLogic}</button>
         <p>My turn : {isMyTurn ? "true" : "false"}</p>
@@ -420,26 +450,48 @@ function Game() {
         </div>}
       </div>
 
-      <div className="player-card player1">
-          {myCards.map((v,i) => (
-              <p onClick={() => selectCard(v)} key={i} className="card card-hover">
-                  {v.color} {v.special} {v.number}
-              </p>
-          ))}
-      </div>
+      <div className="player1 player-card">
+                {myCards.map((v,i) => (
+                    <div onClick={() => selectCard(v)} key={i} className={`card card-hover ${v.color}`}>
+                        <div className="ellipse">
+                            {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
+                            {v.special=="draw_2" && <div>
+                                <p className={`special-${v.special}-1`}></p>
+                                <p className={`special-${v.special}-2`}></p>
+                            </div>}
+                            {v.special=="skip" && <div>
+                                <p className={`special-${v.special}-1`}></p>
+                                <p className={`special-${v.special}-2`}></p>
+                            </div>}
+                            {v.special=="reverse" && <div>
+                                <p className={`special-${v.special}-1`}></p>
+                                <p className={`special-${v.special}-2`}></p>
+                                <p className={`special-${v.special}-3`}></p>
+                                <p className={`special-${v.special}-4`}></p>
+                            </div>}
+                            {v.special=="wild_draw_4" && <div>
+                                <p className={`special-${v.special}-1 yellow`}></p>
+                                <p className={`special-${v.special}-2 blue`}></p>
+                                <p className={`special-${v.special}-3 red`}></p>
+                                <p className={`special-${v.special}-4 green`}></p>
+                            </div>}
+                        </div>
+                    </div>
+                ))}
+            </div>
 
       {Object.keys(playersCardList).map((key,i) => (
         <div key={i} className={`player-card player${i+2} `}>
           {playersCardList[key].map((v,i)=>(
-            <p key={i} className="card"></p>
+            <div className="card black">
+              <div className="ellipse red">
+                <p className="logo solid-shadow">uno</p>
+              </div>
+            </div>
           ))}
         </div>
       ))}
 
-
-
-      
-     
     </div>
   );
 }

@@ -67,18 +67,12 @@ const Room = () => {
     }, []);
 
     return (
-        <div className="Room">
+        <div className="room">
             <h1>Room:{context.roomId}</h1>
-            <button onClick={leaveRoom}>
-                leave the room
-            </button>
-            <ul>
-                {players.map((v) => (
-                    <li key={v}>
-                        {v}
-                    </li>
-                ))}
-            </ul>
+            {players.map((v) => (
+                <p key={v} className="player-in-room">{v}</p>
+            ))}
+            <button onClick={leaveRoom} className="btn">leave the room</button>
         </div>
     );
 }

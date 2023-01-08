@@ -35,6 +35,7 @@ body {
   height:300px;
 }
 .login h1 { color: #fff; text-shadow: 0 0 10px rgba(0,0,0,0.3); letter-spacing:1px; text-align:center; }
+.room h1 { color: #fff; text-shadow: 0 0 10px rgba(0,0,0,0.3); letter-spacing:1px; text-align:center; }
 
 input { 
   width: 100%; 
@@ -56,6 +57,23 @@ input {
   transition: box-shadow .5s ease;
 }
 input:focus { box-shadow: inset 0 -5px 45px rgba(100,100,100,0.4), 0 1px 1px rgba(255,255,255,0.2); }
+.room{
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -150px 0 0 -150px;
+}
+.player-in-room{
+  color:white;
+  font-weight: bold;
+  background-color: #111111;
+  opacity:0.5;
+  width: 300px;
+  height: 50px;
+  text-align: center;
+  line-height: 50px;
+  border-radius: 20px;
+}
 
 /* game screen */
 .player-card{
@@ -64,15 +82,187 @@ input:focus { box-shadow: inset 0 -5px 45px rgba(100,100,100,0.4), 0 1px 1px rgb
   align-items: center;
 }
 .card{
-  background-image: url(../public/whiteback.png);
+  /*background-image: url(../public/whiteback.png);*/
+  border: solid 2px #fff;
   width:70px;
   height:100px;
   margin-right: 10px;
+  margin-bottom: 10px;
   border-radius: 5px;
 }
 .card-hover:hover{
-    font-size: 20px;
-    font-weight: bold;
+    margin-bottom: 20px;
+}
+.red{
+  background-color: red;
+}
+.blue{
+  background-color: blue;
+}
+.green{
+  background-color: green;
+}
+.yellow{
+  background-color: #fdb933;
+}
+.black{
+  background-color: black;
+}
+.ellipse{
+  width:50px;
+  height:80px;
+  border-radius: 50%;
+  border: solid 2px #fff;
+  transform:rotate(20deg);
+  position:relative;
+  top:9px;
+  left:8px;
+}
+.logo{
+  font-size: 18px;
+  color:yellow;
+  position:relative;
+  top:5px;
+  left:7px;
+}
+.solid-shadow{
+  /*影を縦方向に重ねる*/
+  text-shadow: 
+    0 0.01em 0 #aaa,
+    0 0.02em 0 #999,
+    0 0.03em 0 #888,
+    0 0.04em 0 #777,
+    0 0.05em 0 #666,
+    0 0.06em 0 #555,
+    0 0.07em 0 #444,
+    0 0.08em 0 #333,
+    0 0.09em 0 #222,
+    0 0.1em 0 #111;
+}
+.number{
+  transform:rotate(-20deg);
+  width:10px;
+  color:white;
+  font-size: 25px;
+  font-weight: bold;
+  position:relative;
+  bottom:4px;
+  left:17px;
+}
+.special{
+  transform:rotate(-20deg);
+  width:10px;
+  color:white;
+  font-size: 10px;
+  font-weight: bold;
+  position:relative;
+  bottom:4px;
+  left:17px;
+}
+
+.special-skip-1{
+  transform:rotate(-20deg);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  border: solid 5px #fff;
+  position:relative;
+  top:6px;
+  left:8px;
+}
+.special-skip-2{
+  transform:rotate(20deg);
+  background-color: white;
+  width: 5px;
+  height: 24px;
+  position:relative;
+  bottom:36px;
+  left:20px;
+}
+.special-reverse-1{
+  display: inline-block;
+  border-style: solid;
+  border-width: 0 7px 12px 7px;
+  border-color: transparent transparent #fff transparent;
+  position:relative;
+  bottom:7px;
+  left:10px;
+}
+.special-reverse-2{
+  background-color: white;
+  width: 5px;
+  height: 24px;
+  position:relative;
+  bottom:44px;
+  left:15px;
+}
+.special-reverse-3{
+  transform:rotate(180deg);
+  display: inline-block;
+  border-style: solid;
+  border-width: 0 7px 12px 7px;
+  border-color: transparent transparent #fff transparent;
+  position:relative;
+  bottom:70px;
+  left:15px;
+}
+.special-reverse-4{
+  background-color: white;
+  width: 5px;
+  height: 24px;
+  position:relative;
+  bottom:140px;
+  left:20px;
+}
+.special-draw_2-1{
+  transform:rotate(-20deg);
+  width:13px;
+  height:20px;
+  background-color: white;
+  position:relative;
+  top:2px;
+  left:18px;
+}
+.special-draw_2-2{
+  transform:rotate(-20deg);
+  width:13px;
+  height:20px;
+  background-color: white;
+  position:relative;
+  bottom:17px;
+  left:15px;
+}
+.special-wild_draw_4-1{
+  transform:rotate(-20deg);
+  width:13px;
+  height:20px;
+  position:relative;
+  left:20px;
+  top: 2px;
+}
+.special-wild_draw_4-2{
+  transform:rotate(-20deg);
+  width:13px;
+  height:20px;
+  position:relative;
+  bottom:26px;
+  left:9px;
+}
+.special-wild_draw_4-3{
+  transform:rotate(-20deg);
+  width:13px;
+  height:20px;
+  position:relative;
+  bottom:50px;
+  left:22px;
+}
+.special-wild_draw_4-4{
+  transform:rotate(-20deg);
+  width:13px;
+  height:20px;
+  position:relative;
+  bottom:77px;
+  left:12px;
 }
 .player1{
   width: 50%;
@@ -108,10 +298,7 @@ input:focus { box-shadow: inset 0 -5px 45px rgba(100,100,100,0.4), 0 1px 1px rgb
   width:300px;
   height:300px;
 }
-.field-card{
-  background-image: url(../public/whiteback.png);
-  width:70px;
-  height:100px;
+.Deck{
+  display:flex;
 }
-
 
