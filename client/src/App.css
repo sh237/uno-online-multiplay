@@ -190,11 +190,12 @@ input:focus { box-shadow: inset 0 -5px 45px rgba(100,100,100,0.4), 0 1px 1px rgb
 }
 .special-reverse-2{
   background-color: white;
-  width: 5px;
+  width: 6px;
   height: 24px;
   position:relative;
   bottom:44px;
-  left:15px;
+  left:14px;
+  border-radius: 0 0 0 100%;
 }
 .special-reverse-3{
   transform:rotate(180deg);
@@ -204,15 +205,16 @@ input:focus { box-shadow: inset 0 -5px 45px rgba(100,100,100,0.4), 0 1px 1px rgb
   border-color: transparent transparent #fff transparent;
   position:relative;
   bottom:70px;
-  left:15px;
+  left:16px;
 }
 .special-reverse-4{
   background-color: white;
-  width: 5px;
+  width: 6px;
   height: 24px;
   position:relative;
   bottom:140px;
   left:20px;
+  border-radius: 0 100% 0 0;
 }
 .special-draw_2-1{
   transform:rotate(-20deg);
@@ -263,6 +265,64 @@ input:focus { box-shadow: inset 0 -5px 45px rgba(100,100,100,0.4), 0 1px 1px rgb
   position:relative;
   bottom:77px;
   left:12px;
+}
+.special-wild-1{
+  display: inline-block;
+  width: 25px;
+  height: 40px;
+  border-radius: 100% 0 0 0;
+  position: relative;
+  bottom: 16px;
+  left: 0px;
+}
+.special-wild-2{
+  display: inline-block;
+	width: 25px;
+	height: 40px;
+	border-radius: 0 100% 0 0;
+  position:relative;
+  bottom:91px;
+  left:22px;
+  transform:rotate(5deg);
+}
+.special-wild-3{
+  display: inline-block;
+  width: 25px;
+  height: 35px;
+  border-radius: 0 0 0 100%;
+  position: relative;
+  bottom: 130px;
+  left: -1px;
+  transform:rotate(5deg);
+}
+.special-wild-4{
+  display: inline-block;
+    width: 25px;
+    height: 38px;
+    border-radius: 0 0 100% 0;
+    position: relative;
+    bottom: 201px;
+    left: 20px;
+    transform: rotate(5deg);
+}
+.special-white_wild{
+  width:50px;
+  height:80px;
+  border-radius: 50%;
+  background-color: white;
+  position:relative;
+  bottom:18px;
+  left:-2px;
+}
+.special-shuffle_wild{
+  transform:rotate(-20deg);
+  color: white;
+  width:50px;
+  height:20px;
+  border-radius: 50%;
+  position:relative;
+  top:8px;
+  left:-3px;
 }
 .player1{
   width: 50%;

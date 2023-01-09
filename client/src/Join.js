@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import ReactDOM from 'react-dom'
 import { useContext, createRef } from 'react';
 import { GlobalContext } from './Context.js';
 
@@ -34,7 +33,7 @@ const Join = () => {
         }
     }
     //デバッグ用
-    const myCards=[{color:"red",number:1},{color:"red",special:"draw_2"},{color:"blue",number:1},{color:"blue",special:"skip"},{color:"green",special:"reverse"},{color:"red",number:1},{color:"yellow",number:1},{color:"black",special:"wild_draw_4"}];//,{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},];
+    const myCards=[{color:"red",number:0},{color:"red",special:"draw_2"},{color:"blue",number:1},{color:"blue",special:"skip"},{color:"green",special:"reverse"},{special:"wild"},{color:"yellow",number:1},{color:"black",special:"wild_draw_4"}];//,{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},];
     function selectCard(v){
         console.log(v);
     };
@@ -89,6 +88,18 @@ const Join = () => {
                                 <p className={`special-${v.special}-2 blue`}></p>
                                 <p className={`special-${v.special}-3 red`}></p>
                                 <p className={`special-${v.special}-4 green`}></p>
+                            </div>}
+                            {v.special=="wild" && <div>
+                                <p className={`special-${v.special}-1 red`}></p>
+                                <p className={`special-${v.special}-2 blue`}></p>
+                                <p className={`special-${v.special}-3 yellow`}></p>
+                                <p className={`special-${v.special}-4 green`}></p>
+                            </div>}
+                            {v.special=="white_wild" && <div>
+                                <p className={`special-${v.special}`}></p>
+                            </div>}
+                            {v.special=="shuffle_wild" && <div>
+                                <p className={`special-${v.special} solid-shadow`}>shuffle</p>
                             </div>}
                         </div>
                     </div>
