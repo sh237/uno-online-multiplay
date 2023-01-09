@@ -15,30 +15,66 @@ module.exports = (io) => {
               let player = room.players_info.find((player) => {
                 return player.socket_id == socket.id;
               });
-              console.log('inside draw card');
-              //ドローできるのかサーバー側でも確認
-              console.log('checkMustCallDrawCard', checkMustCallDrawCard(room, room.room_name, player._id));
-              //ドローする
-              let draw_card = room.deck.shift();
-              //ドローしたカードをプレイヤーの手札に加える
-              player.cards.push(draw_card);
-
-              //ドローしたカードが場に出せるかを確認
-              let is_playable = false;
-              if(draw_card.special == Special.WHITE_WILD ||  draw_card.special == Special.WILD_DRAW_4 || draw_card.special == Special.WILD || draw_card.special == Special.WILD_SHUFFLE){
-                is_playable = true;
-              }
-              else if ((room.current_field.special != null && room.current_field.special == draw_card.special) || ((room.current_field.color != null) && room.current_field.color == draw_card.color) || ((room.current_field.number != null ) && room.current_field.number == draw_card.number)){
-                is_playable = true;
+              //このプレイヤーが現在の手番のプレイヤーかどうか確認する。
+              if(room.order[room.current_player] != player._id){
+                console.log('not your turn');
+                //ここにペナルティ処理の追加
+                return;
               }
 
-              //saveする
-              room.save();
-              socket.emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_card});
+              let next_player = false;
+              //場のカードがワイルドドロー4の場合
+              if(room.current_field.special == Special.WILD_DRAW_4){
+                //4枚ドローする
+                let draw_card1 = room.deck.shift();
+                let draw_card2 = room.deck.shift();
+                let draw_card3 = room.deck.shift();
+                let draw_card4 = room.deck.shift();
+                //ドローしたカードをプレイヤーの手札に加える
+                player.cards.push(draw_card1);
+                player.cards.push(draw_card2);
+                player.cards.push(draw_card3);
+                player.cards.push(draw_card4);
+                //次のプレイヤーにドローしたカードを通知する
+                io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2, draw_card3, draw_card4], is_penalty:false});
+                io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, can_play_draw_card:false});
+                next_player = true;
+              }
+              //場のカードがドロー2の場合
+              else if(room.current_field.special == Special.DRAW_2){
+                //2枚ドローする
+                let draw_card1 = room.deck.shift();
+                let draw_card2 = room.deck.shift();
+                //ドローしたカードをプレイヤーの手札に加える
+                player.cards.push(draw_card1);
+                player.cards.push(draw_card2);
+                //次のプレイヤーにドローしたカードを通知する
+                io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2], is_penalty:false});
+                io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, can_play_draw_card:false});
+                next_player = true;
+              }
+              else{
+                //ドローできるのかサーバー側でも確認
+                console.log('checkMustCallDrawCard', checkMustCallDrawCard(room, room.room_name, player._id));
+                //ドローする
+                let draw_card = room.deck.shift();
+                //ドローしたカードをプレイヤーの手札に加える
+                player.cards.push(draw_card);
 
-              io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, can_play_draw_card:is_playable});
+                //ドローしたカードが場に出せるかを確認
+                let is_playable = false;
+                if(draw_card.special == Special.WHITE_WILD ||  draw_card.special == Special.WILD_DRAW_4 || draw_card.special == Special.WILD || draw_card.special == Special.WILD_SHUFFLE){
+                  is_playable = true;
+                }
+                else if ((room.current_field.special != null && room.current_field.special == draw_card.special) || ((room.current_field.color != null) && room.current_field.color == draw_card.color) || ((room.current_field.number != null ) && room.current_field.number == draw_card.number)){
+                  is_playable = true;
+                }
 
-              if(!is_playable){
+                socket.emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_card});
+
+                io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, can_play_draw_card:is_playable});
+              }
+              if(!is_playable || next_player){
                 //next_playerイベントを発火させるための処理
                 let next_player = getNextPlayer(room);
                 updateCurrentPlayer(room);
@@ -50,6 +86,10 @@ module.exports = (io) => {
                 room.number_turn_play++;
                 io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:checkMustCallDrawCard(room, room.room_name, next_player._id), draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
               }
+
+              //saveする
+              room.save();
+              
             }
         });
     });
@@ -137,6 +177,7 @@ module.exports = (io) => {
         socket.on(SocketConst.EMIT.COLOR_OF_WILD, (data) => {
           clearTimeout(timeoutId);
           room.current_field.color = data.color_of_wild;
+          
           resolve(data);
         });
       });
@@ -172,15 +213,15 @@ module.exports = (io) => {
 
               if(card_play.special == Special.DRAW_2){
                 //2枚ドローする
-                let draw_card1 = room.deck.shift();
-                let draw_card2 = room.deck.shift();
+                // let draw_card1 = room.deck.shift();
+                // let draw_card2 = room.deck.shift();
                 //ドローしたカードを次のプレイヤーの手札に加える
                 //次のプレイヤーを取得する
-                let next_player = getNextPlayer(room);
-                updateCurrentPlayer(room);
+                // let next_player = getNextPlayer(room);
+                // updateCurrentPlayer(room);
 
-                next_player.cards.push(draw_card1);
-                next_player.cards.push(draw_card2);
+                // next_player.cards.push(draw_card1);
+                // next_player.cards.push(draw_card2);
 
                 //カードを場に出したことをクライアントに通知する
                 if(socketEvent == SocketConst.EMIT.PLAY_CARD){
@@ -215,12 +256,14 @@ module.exports = (io) => {
                   }
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
-                io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:next_player._id, is_draw:true, can_play_card:false, reason:DrawReason.DRAW_TWO});
+                // io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:next_player._id, is_draw:true, can_play_card:false, reason:DrawReason.DRAW_TWO});
                 //次のプレイヤーにドローしたカードを通知する
-                io.to(next_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2],is_penalty:false});
+                // io.to(next_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2],is_penalty:false});
 
                 //next_playerイベントを発火させるための処理
+                updateCurrentPlayer(room);
                 let next_next_player = getNextPlayer(room);
+                let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
                 next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
                 let number_card_of_player = {};
                 room.players_info.forEach((player) => {
@@ -340,17 +383,17 @@ module.exports = (io) => {
               }
               else if(card_play.special == Special.WILD_DRAW_4){
                 //まず次のプレイヤーを取得する
-                let next_player = getNextPlayer(room);
+                // let next_player = getNextPlayer(room);
                 //4枚ドローする
-                let draw_card1 = room.deck.shift();
-                let draw_card2 = room.deck.shift();
-                let draw_card3 = room.deck.shift();
-                let draw_card4 = room.deck.shift();
+                // let draw_card1 = room.deck.shift();
+                // let draw_card2 = room.deck.shift();
+                // let draw_card3 = room.deck.shift();
+                // let draw_card4 = room.deck.shift();
                 //ドローしたカードを次のプレイヤーの手札に加える
-                next_player.cards.push(draw_card1);
-                next_player.cards.push(draw_card2);
-                next_player.cards.push(draw_card3);
-                next_player.cards.push(draw_card4);
+                // next_player.cards.push(draw_card1);
+                // next_player.cards.push(draw_card2);
+                // next_player.cards.push(draw_card3);
+                // next_player.cards.push(draw_card4);
                 
                 //色をクライアントに選ばせる
                 socket.emit(SocketConst.EMIT.COLOR_OF_WILD, {});
@@ -368,13 +411,13 @@ module.exports = (io) => {
                   io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 }
 
-                io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:next_player._id, is_draw:true, can_play_card:false, reason:DrawReason.WILD_DRAW_4});
+                // io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:next_player._id, is_draw:true, can_play_card:false, reason:DrawReason.WILD_DRAW_4});
                 //次のプレイヤーにドローしたカードを通知する
-                io.to(next_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2, draw_card3, draw_card4],is_penalty:false});
+                // io.to(next_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:[draw_card1, draw_card2, draw_card3, draw_card4],is_penalty:false});
 
                 //next_playerイベントを発火させるための処理
                 let next_next_player = getNextPlayer(room);
-                next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+                let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
                 let number_card_of_player = {};
                 room.players_info.forEach((player) => {
                   number_card_of_player[player._id] = player.cards.length;
