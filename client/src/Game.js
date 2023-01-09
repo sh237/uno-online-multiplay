@@ -61,6 +61,7 @@ function Game() {
   const [isSayUno, setIsSayUno] = useState(false);
   const [canPlayDrowCard,setCanPlayDrowCard] = useState(false);
   const [canSelectColor,setCanSelectColor] = useState(false);
+  const [isChallenge,setIsChallenge] = useState(false);
   const [displayPointedNotSayUno,setDisplayPointedNotSayUno] = useState(false);
   const [pointedNotSayUnoResult,setPointedNotSayUnoResult] = useState("");
   const [sayUnoPlayer,setSayUnoPlayer] = useState("");
@@ -224,14 +225,14 @@ function Game() {
     socket.on(SocketConst.EMIT.NEXT_PLAYER, async (dataRes) => {
       console.log("on:NEXT_PLAYER",dataRes);
       //setFieldCard(dataRes.card_before);
-      setIsMyTurn(true);
       if(dataRes.must_call_draw_card){
-        //draw2とかもこれでok?
-        sendDrawCard();
-      }else{
-        if (dataRes.next_player===context.playerId){
-          
+        if(dataRes.must_call_draw_card){
+          setIsChallenge(true);
+        }else{
+          sendDrawCard();
         }
+      }else{
+        setIsMyTurn(true);
       }
       //setPlayersCardList(dataRes.number_card_of_player);
     });
@@ -345,7 +346,7 @@ function Game() {
     }
   }
   //引いたカードを出すか出さないかの処理
-  function whetherDrawCard(v){
+  function whetherPlayDrawCard(v){
     setCanPlayDrowCard(false);
     const data = { is_play_card: v };
     if(myCards.length==2 && isSayUno){
@@ -374,6 +375,11 @@ function Game() {
     sendPointedNotSayUno(data);
   }
 
+  function whetherChallenge(v){
+    const data={is_challenge:v};
+    sendChallenge(data);
+  }
+
   return (
     <div className="game">
       <div className="field">
@@ -387,24 +393,36 @@ function Game() {
             <div className="ellipse">
               {(fieldCard.number || fieldCard.number==0) && <p className="number solid-shadow">{fieldCard.number}</p>}
               {fieldCard.special=="draw_2" && <div>
-                  <p className={`special-${fieldCard.special}-1`}></p>
-                  <p className={`special-${fieldCard.special}-2`}></p>
+                <p className={`special-${fieldCard.special}-1`}></p>
+                <p className={`special-${fieldCard.special}-2`}></p>
               </div>}
               {fieldCard.special=="skip" && <div>
-                  <p className={`special-${fieldCard.special}-1`}></p>
-                  <p className={`special-${fieldCard.special}-2`}></p>
+                <p className={`special-${fieldCard.special}-1`}></p>
+                <p className={`special-${fieldCard.special}-2`}></p>
               </div>}
               {fieldCard.special=="reverse" && <div>
-                  <p className={`special-${fieldCard.special}-1`}></p>
-                  <p className={`special-${fieldCard.special}-2`}></p>
-                  <p className={`special-${fieldCard.special}-3`}></p>
-                  <p className={`special-${fieldCard.special}-4`}></p>
+                <p className={`special-${fieldCard.special}-1`}></p>
+                <p className={`special-${fieldCard.special}-2`}></p>
+                <p className={`special-${fieldCard.special}-3`}></p>
+                <p className={`special-${fieldCard.special}-4`}></p>
               </div>}
               {fieldCard.special=="wild_draw_4" && <div>
-                  <p className={`special-${fieldCard.special}-1 yellow`}></p>
-                  <p className={`special-${fieldCard.special}-2 blue`}></p>
-                  <p className={`special-${fieldCard.special}-3 red`}></p>
-                  <p className={`special-${fieldCard.special}-4 green`}></p>
+                <p className={`special-${fieldCard.special}-1 yellow`}></p>
+                <p className={`special-${fieldCard.special}-2 blue`}></p>
+                <p className={`special-${fieldCard.special}-3 red`}></p>
+                <p className={`special-${fieldCard.special}-4 green`}></p>
+              </div>}
+              {fieldCard.special=="wild" && <div>
+                <p className={`special-${fieldCard.special}-1 red`}></p>
+                <p className={`special-${fieldCard.special}-2 blue`}></p>
+                <p className={`special-${fieldCard.special}-3 yellow`}></p>
+                <p className={`special-${fieldCard.special}-4 green`}></p>
+              </div>}
+              {fieldCard.special=="white_wild" && <div>
+                <p className={`special-${fieldCard.special}`}></p>
+              </div>}
+              {fieldCard.special=="shuffle_wild" && <div>
+                <p className={`special-${fieldCard.special} solid-shadow`}>shuffle</p>
               </div>}
             </div>
           </div>
@@ -438,45 +456,62 @@ function Game() {
         </div>
         {canPlayDrowCard && <div>
           <p>Do you play the card you drew?</p>
-          <button onClick={()=>{whetherDrawCard(true)}}>yes</button>
-          <button onClick={()=>{whetherDrawCard(false)}}>no</button>
+          <button onClick={()=>{whetherPlayDrawCard(true)}}>yes</button>
+          <button onClick={()=>{whetherPlayDrawCard(false)}}>no</button>
         </div>}
         {canSelectColor && <div>
-          <p>Do you play the card you drew?</p>
+          <p>Select color</p>
           <button onClick={()=>{selectColor(0)}}>red</button>
           <button onClick={()=>{selectColor(1)}}>yellow</button>
           <button onClick={()=>{selectColor(2)}}>gleen</button>
           <button onClick={()=>{selectColor(3)}}>blue</button>
         </div>}
+        {isChallenge && <div>
+          <p>Do you challenge?</p>
+          <button onClick={()=>{whetherChallenge(true)}}>yes</button>
+          <button onClick={()=>{whetherChallenge(false)}}>no</button>
+        </div>}
       </div>
 
       <div className="player1 player-card">
                 {myCards.map((v,i) => (
-                    <div onClick={() => selectCard(v)} key={i} className={`card card-hover ${v.color}`}>
-                        <div className="ellipse">
-                            {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
-                            {v.special=="draw_2" && <div>
-                                <p className={`special-${v.special}-1`}></p>
-                                <p className={`special-${v.special}-2`}></p>
-                            </div>}
-                            {v.special=="skip" && <div>
-                                <p className={`special-${v.special}-1`}></p>
-                                <p className={`special-${v.special}-2`}></p>
-                            </div>}
-                            {v.special=="reverse" && <div>
-                                <p className={`special-${v.special}-1`}></p>
-                                <p className={`special-${v.special}-2`}></p>
-                                <p className={`special-${v.special}-3`}></p>
-                                <p className={`special-${v.special}-4`}></p>
-                            </div>}
-                            {v.special=="wild_draw_4" && <div>
-                                <p className={`special-${v.special}-1 yellow`}></p>
-                                <p className={`special-${v.special}-2 blue`}></p>
-                                <p className={`special-${v.special}-3 red`}></p>
-                                <p className={`special-${v.special}-4 green`}></p>
-                            </div>}
-                        </div>
+                  <div onClick={() => selectCard(v)} key={i} className={`card card-hover ${v.color}`}>
+                    <div className="ellipse">
+                      {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
+                      {v.special=="draw_2" && <div>
+                        <p className={`special-${v.special}-1`}></p>
+                        <p className={`special-${v.special}-2`}></p>
+                      </div>}
+                      {v.special=="skip" && <div>
+                        <p className={`special-${v.special}-1`}></p>
+                        <p className={`special-${v.special}-2`}></p>
+                      </div>}
+                      {v.special=="reverse" && <div>
+                        <p className={`special-${v.special}-1`}></p>
+                        <p className={`special-${v.special}-2`}></p>
+                        <p className={`special-${v.special}-3`}></p>
+                        <p className={`special-${v.special}-4`}></p>
+                      </div>}
+                      {v.special=="wild_draw_4" && <div>
+                        <p className={`special-${v.special}-1 yellow`}></p>
+                        <p className={`special-${v.special}-2 blue`}></p>
+                        <p className={`special-${v.special}-3 red`}></p>
+                        <p className={`special-${v.special}-4 green`}></p>
+                      </div>}
+                      {v.special=="wild" && <div>
+                        <p className={`special-${v.special}-1 red`}></p>
+                        <p className={`special-${v.special}-2 blue`}></p>
+                        <p className={`special-${v.special}-3 yellow`}></p>
+                        <p className={`special-${v.special}-4 green`}></p>
+                      </div>}
+                      {v.special=="white_wild" && <div>
+                        <p className={`special-${v.special}`}></p>
+                      </div>}
+                      {v.special=="shuffle_wild" && <div>
+                        <p className={`special-${v.special} solid-shadow`}>shuffle</p>
+                      </div>}
                     </div>
+                  </div>
                 ))}
             </div>
 
