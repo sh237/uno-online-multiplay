@@ -94,7 +94,6 @@ module.exports = (io) => {
 
       //ルームに参加する処理
       socket.on(SocketConst.EMIT.JOIN_ROOM,(payload, callback) => {
-        console.log("payload", payload);
         let is_game_started = false;
         Room.findOne({room_name: payload.room_name}, (error, room) => {
           if (error) {
@@ -226,7 +225,6 @@ module.exports = (io) => {
 
   //既存のRoomデータのdeckやcurrent_fieldやcurrent_playerを初期化する関数
   const initDeck = (room) =>{
-  console.log("initDeck");
     let deck = [];
     for(let c=0; c<4; c++){
       let color = "";
@@ -281,10 +279,7 @@ module.exports = (io) => {
     room.order = shuffle(room.order);
     room.current_player = 0;
     //current_fieldをdeckからランダムに取り出す
-    console.log("room deck length : " + room.deck.length);
     room.current_field = room.deck.splice(Math.floor(Math.random() * room.deck.length), 1)[0];
-    console.log("room deck remaining : " + room.deck.length);
-    console.log("room current_field : " + room.current_field);
     room.save((error, room) => {
       if (error) {
         console.error(error);
@@ -296,17 +291,13 @@ module.exports = (io) => {
 
   //カードを配る関数
   const distributeCards = (room) => {
-    console.log("distribute_cards");
     //カードを配る
     for(let i=0; i<room.order.length; i++){
-      console.log('player name: ' + room.players_info[i].player_name);
       for(let j=0; j<7; j++){
         let card = room.deck.splice(Math.floor(Math.random() * room.deck.length), 1)[0];
         room.players_info[i].cards.push(card);
-        console.log(card);
       }
     }
-    console.log("room deck remaining : " + room.deck.length);
 
     room.save((error, room) => {
       if (error) {
