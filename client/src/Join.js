@@ -98,7 +98,7 @@ const Join = () => {
                             {v.special=="white_wild" && <div>
                                 <p className={`special-${v.special}`}></p>
                             </div>}
-                            {v.special=="shuffle_wild" && <div>
+                            {v.special=="wild_shuffle" && <div>
                                 <p className={`special-${v.special} solid-shadow`}>shuffle</p>
                             </div>}
                         </div>

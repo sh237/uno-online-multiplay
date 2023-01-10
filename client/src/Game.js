@@ -226,7 +226,7 @@ function Game() {
       console.log("on:NEXT_PLAYER",dataRes);
       //setFieldCard(dataRes.card_before);
       if(dataRes.must_call_draw_card){
-        if(dataRes.must_call_draw_card){
+        if(dataRes.draw_reason==DrawReason.WILD_DRAW_4){
           setIsChallenge(true);
         }else{
           sendDrawCard();
@@ -235,6 +235,7 @@ function Game() {
         setIsMyTurn(true);
       }
       //setPlayersCardList(dataRes.number_card_of_player);
+      setFieldCard(dataRes.card_before);
     });
     return () => {
       socket.off(SocketConst.EMIT.FIRST_PLAYER);
@@ -349,7 +350,7 @@ function Game() {
   function whetherPlayDrawCard(v){
     setCanPlayDrowCard(false);
     const data = { is_play_card: v };
-    if(myCards.length==2 && isSayUno){
+    if(myCards.length==2 && isSayUno && v){
       sendSayUnoAndPlayDrawCard();
     }
     sendPlayDrawCard(data);
@@ -378,6 +379,7 @@ function Game() {
   function whetherChallenge(v){
     const data={is_challenge:v};
     sendChallenge(data);
+    setIsChallenge(false);
   }
 
   return (
@@ -421,7 +423,7 @@ function Game() {
               {fieldCard.special=="white_wild" && <div>
                 <p className={`special-${fieldCard.special}`}></p>
               </div>}
-              {fieldCard.special=="shuffle_wild" && <div>
+              {fieldCard.special=="wild_shuffle" && <div>
                 <p className={`special-${fieldCard.special} solid-shadow`}>shuffle</p>
               </div>}
             </div>
@@ -507,7 +509,7 @@ function Game() {
                       {v.special=="white_wild" && <div>
                         <p className={`special-${v.special}`}></p>
                       </div>}
-                      {v.special=="shuffle_wild" && <div>
+                      {v.special=="wild_shuffle" && <div>
                         <p className={`special-${v.special} solid-shadow`}>shuffle</p>
                       </div>}
                     </div>
