@@ -59,7 +59,7 @@ function Game() {
   const [playersCardList,setPlayersCardList] = useState({});
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [isSayUno, setIsSayUno] = useState(false);
-  const [canPlayDrowCard,setCanPlayDrowCard] = useState(false);
+  const [canPlayDrawCard,setCanPlayDrawCard] = useState(false);
   const [canSelectColor,setCanSelectColor] = useState(false);
   const [isChallenge,setIsChallenge] = useState(false);
   const [displayPointedNotSayUno,setDisplayPointedNotSayUno] = useState(false);
@@ -159,7 +159,7 @@ function Game() {
       console.log("on:DRAW_CARD",dataRes);
       if(dataRes.player===context.playerId && dataRes.can_play_draw_card){
           //はいかいいえの応答をユーザーから受け付ける処理
-          setCanPlayDrowCard(true);
+          setCanPlayDrawCard(true);
       }else if(dataRes.player!==context.playerId && dataRes.is_draw){
         setPlayersCardList((prevState) => {
           const arr = prevState[dataRes.player];
@@ -342,13 +342,14 @@ function Game() {
   };
 
   function drawCard() {
+    setIsMyTurn(false);
     if(isMyTurn){
       sendDrawCard();
     }
   }
   //引いたカードを出すか出さないかの処理
   function whetherPlayDrawCard(v){
-    setCanPlayDrowCard(false);
+    setCanPlayDrawCard(false);
     const data = { is_play_card: v };
     if(myCards.length==2 && isSayUno && v){
       sendSayUnoAndPlayDrawCard();
@@ -456,7 +457,7 @@ function Game() {
             <button onClick={setPointedNotSayUnoResult("")}>close</button>
           </div>}
         </div>
-        {canPlayDrowCard && <div>
+        {canPlayDrawCard && <div>
           <p>Do you play the card you drew?</p>
           <button onClick={()=>{whetherPlayDrawCard(true)}}>yes</button>
           <button onClick={()=>{whetherPlayDrawCard(false)}}>no</button>
