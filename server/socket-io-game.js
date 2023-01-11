@@ -11,17 +11,17 @@ module.exports = (io) => {
               console.error(error);
               return;
             }
-            console.log("EVENT ON (" + getPlayerNameBySocketId(room, socket.id) + "): DRAW_CARD");
+            console.log("EVENT ON   (" + getPlayerNameBySocketId(room, socket.id) + "): DRAW_CARD");
             if(room != null){
               let player = room.players_info.find((player) => {
                 return player.socket_id == socket.id;
               });
               //このプレイヤーが現在の手番のプレイヤーかどうか確認する。
-              if(room.order[room.current_player] != player._id){
-                console.log('INFO: not your turn');
-                //ここにペナルティ処理の追加
-                return;
-              }
+              // if(room.order[room.current_player] != player._id){
+              //   console.log('INFO: not your turn');
+              //   //ここにペナルティ処理の追加
+              //   return;
+              // }
               //このプレイヤーがroom.binded_playersに含まれているかどうか確認、更新する
               let binded_player = room.binded_players.find((binded_player) => {
                 return binded_player.player_id == player._id;
@@ -171,7 +171,7 @@ module.exports = (io) => {
         }, TIMEOUT);
     
         socket.on(SocketConst.EMIT.COLOR_OF_WILD, (data) => {
-          console.log("EVENT ON (" + player.player_name + "): COLOR_OF_WILD");
+          console.log("EVENT ON   (" + player.player_name + "): COLOR_OF_WILD");
           clearTimeout(timeoutId);
           room.current_field.color = data.color_of_wild;
           //next_playerイベントを発火させるための処理
