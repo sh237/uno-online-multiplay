@@ -144,7 +144,7 @@ function Game() {
           }else{
             return prevState;
           }
-        })
+        });
       }else if (dataRes.player !== context.playerId && dataRes.card_play){
         setPlayersCardList((prevState) => {
           const arr = prevState[dataRes.player];
@@ -171,8 +171,27 @@ function Game() {
     
     socket.on(SocketConst.EMIT.PLAY_DRAW_CARD, (dataRes) => {
       console.log("on:PLAY_DRAW_CARD",dataRes);
-      if (dataRes.player === context.playerId && dataRes.card_play && dataRes.is_play_card){
-        setMyCards(myCards.filter((card) => (card !== dataRes.card_play)));
+      setFieldCard(dataRes.card_play);
+      if (dataRes.player === context.playerId && dataRes.is_play_card){
+        setMyCards((prevState)=>{
+          const index = prevState.findIndex((card) => {
+            return card.color == dataRes.card_play.color && card.special == dataRes.card_play.special && card.number == dataRes.card_play.number;
+          });
+          if(index!==-1){
+            const arr = [...prevState];
+            arr.splice(index, 1);
+            return arr;
+          }else{
+            return prevState;
+          }
+        });
+      }else if (dataRes.player !== context.playerId && dataRes.card_play){
+        setPlayersCardList((prevState) => {
+          const arr = prevState[dataRes.player];
+          arr.shift();
+          console.log(arr);
+          return { ...prevState, [dataRes.player]: arr };
+        });
       }
     });
     
