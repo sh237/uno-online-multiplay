@@ -112,7 +112,6 @@ module.exports = (io) => {
 
               //saveする
               room.save();
-              
             }
         });
     });
@@ -121,33 +120,6 @@ module.exports = (io) => {
       if(data.is_play_card){
         playCard(null, socket, SocketConst.EMIT.PLAY_DRAW_CARD);
       }
-      // else{
-      //   Room.findOne(
-      //     { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
-      //       if (error) {
-      //         console.error(error);
-      //         return;
-      //       }
-      //       console.log("EVENT ON (" + getPlayerNameBySocketId(room, socket.id) + "): PLAY_DRAW_CARD ");
-      //       if(room != null){
-      //         let player = room.players_info.find((player) => {
-      //           return player.socket_id == socket.id;
-      //         });
-      //         //next_playerイベントを発火させるための処理
-      //         let next_player = getNextPlayer(room);
-      //         updateCurrentPlayer(room);
-      //         let next_next_player = getNextPlayer(room);
-      //         let number_card_of_player = {};
-      //         room.players_info.forEach((player) => {
-      //           number_card_of_player[player._id] = player.cards.length;
-      //         });
-      //         room.number_turn_play++;
-      //         let is_must_call_draw_card = (room.current_field.special == Special.DRAW_2 || room.current_field.special == Special.WILD_DRAW_4) ? true : false;
-      //         io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
-      //         console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
-      //       }
-      //     });
-      // }
     });
 
     socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, (data) => {
@@ -417,9 +389,6 @@ module.exports = (io) => {
           }
       });
     }
-
-
-      
   });
 
 
