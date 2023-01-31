@@ -226,11 +226,11 @@ function Game() {
       console.log("on:NEXT_PLAYER",dataRes);
       //setFieldCard(dataRes.card_before);
       if(dataRes.must_call_draw_card){
-        if(dataRes.draw_reason==DrawReason.WILD_DRAW_4){
-          setIsChallenge(true);
-        }else{
+        // if(dataRes.draw_reason==DrawReason.WILD_DRAW_4){
+        //   setIsChallenge(true);
+        // }else{
           sendDrawCard();
-        }
+        // }
       }else{
         setIsMyTurn(true);
       }

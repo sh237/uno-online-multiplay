@@ -13,6 +13,8 @@ const RoomSchema = mongoose.Schema({
     number_turn_play:Number,//何ターン目か(仕様書に書いてあった)
     number_card_play:Number,//何枚場に出たか(仕様書に書いてあった)
     uno_declared:[String],//uno宣言したプレイヤーのid
+    is_draw4_last_played: Boolean,//draw4が最後に出されたかどうか
+    is_draw2_last_played: Boolean,//draw2が最後に出されたかどうか
 });
 
 module.exports = mongoose.model('Room',RoomSchema);

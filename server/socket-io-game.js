@@ -41,7 +41,9 @@ module.exports = (io) => {
               let is_playable = false;
 
               //場のカードがワイルドドロー4の場合
-              if(room.current_field.special == Special.WILD_DRAW_4){
+              if(room.current_field.special == Special.WILD_DRAW_4 && room.is_draw4_last_played){
+                //ドロー4が最後に出されたかどうかを更新する
+                room.is_draw4_last_played = false;
                 //4枚ドローする
                 let draw_card1 = room.deck.shift();
                 let draw_card2 = room.deck.shift();
@@ -60,7 +62,9 @@ module.exports = (io) => {
                 is_forced_drawed = true;
               }
               //場のカードがドロー2の場合
-              else if(room.current_field.special == Special.DRAW_2){
+              else if(room.current_field.special == Special.DRAW_2 && room.is_draw2_last_played){
+                //ドロー2が最後に出されたかどうかを更新する
+                room.is_draw2_last_played = false;
                 let draw_card1 = room.deck.shift();
                 let draw_card2 = room.deck.shift();
 
@@ -99,17 +103,11 @@ module.exports = (io) => {
                   number_card_of_player[player._id] = player.cards.length;
                 });
                 room.number_turn_play++;
-                let is_must_call_draw_card;
-                if(is_forced_drawed){
-                  is_must_call_draw_card = false;
-                }
-                else{
-                  is_must_call_draw_card = (room.current_field.special == Special.DRAW_2 || room.current_field.special == Special.WILD_DRAW_4) ? true : false;
-                }
+                let is_must_call_draw_card = false;
                 io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card: is_must_call_draw_card, draw_reason:DrawReason.NOTING, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
                 console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to " + next_player.player_name);
               }
-
+              
               //saveする
               room.save();
             }
@@ -182,7 +180,7 @@ module.exports = (io) => {
             number_card_of_player[player._id] = player.cards.length;
           });
           room.number_turn_play++;
-          let is_must_call_draw_card = (room.current_field.special == Special.DRAW_2 || room.current_field.special == Special.WILD_DRAW_4) ? true : false;
+          let is_must_call_draw_card = (reason == DrawReason.WILD_DRAW_4) ? true : false;
           io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
           console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
           room.save();
@@ -231,7 +229,7 @@ module.exports = (io) => {
         number_card_of_player[player._id] = player.cards.length;
       });
       room.number_turn_play++;
-      let is_must_call_draw_card = (room.current_field.special == Special.DRAW_2 || room.current_field.special == Special.WILD_DRAW_4) ? true : false;
+      let is_must_call_draw_card = (reason == DrawReason.DRAW_2) ? true : false;
       io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
 
       room.save();
@@ -259,10 +257,17 @@ module.exports = (io) => {
             if(index != -1){
               /*プレイヤーが持っているカードの中にこのカードがある場合、
               カードを場に出す*/
-              let previos_color = room.current_field.color;
+              let previous_color = room.current_field.color;
               room.current_field = card_play;
               room.number_card_play++;
               player.cards.splice(index,1);
+              
+              //場に出したカードがDRAW_2、WILD_DRAW_4の場合roomの値を更新
+              if(card_play.special == Special.DRAW_2){
+                room.is_draw2_last_played = true;
+              }else if(card_play.special == Special.WILD_DRAW_4){
+                room.is_wild_draw4_last_played = true;
+              }
 
               //カードを場に出したことをクライアントに通知する
               if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
@@ -274,7 +279,7 @@ module.exports = (io) => {
                 io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
                 console.log("EVENT EMIT (" + player.player_name + "): SAY_UNO_AND_PLAY_CARD to room. PLAYED " + room.current_field);
               }
-              else{
+              else{1
                 //room.uno_declaredにプレイヤーのidがあるか確認し、あれば削除する
                 if(room.uno_declared.length > 0){
                   let index = room.uno_declared.findIndex((id) => {return id == player._id;});
@@ -352,8 +357,8 @@ module.exports = (io) => {
                   io.to(room.players_info[i].socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:room.players_info[i].cards, is_penalty:false});
                 }
                 //場の色は前の色にする
-                room.current_field.color = previos_color;
-                card_play.color = previos_color;
+                room.current_field.color = previous_color;
+                card_play.color = previous_color;
                 updateCurrentPlayer(room);
                 emitNextPlayer(room, player, DrawReason.NOTING);
               }
@@ -363,8 +368,8 @@ module.exports = (io) => {
                 //次のプレイヤーをroom.binded_playersに追加する
                 room.binded_players.push({player_id:next_player._id, remain_turn : 2});
                 //場の色は前の色にする
-                room.current_field.color = previos_color;
-                card_play.color = previos_color;
+                room.current_field.color = previous_color;
+                card_play.color = previous_color;
                 updateCurrentPlayer(room);
                 emitNextPlayer(room, player, DrawReason.NOTING);
               }
