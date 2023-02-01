@@ -31,12 +31,14 @@ module.exports = (io) => {
                 }
               }
               console.log("is_draw4 last played: " + room.is_draw4_last_played);
+              console.log("is_draw4 last played: " + room.is_draw2_last_played);
 
               let is_forced_drawed = false;
               let is_playable = false;
 
               //場のカードがワイルドドロー4の場合
-              if(room.current_field.special == Special.WILD_DRAW_4 && room.is_draw4_last_played){
+              // if(room.current_field.special == Special.WILD_DRAW_4 && room.is_draw4_last_played){
+              if(room.is_draw4_last_played){
                 console.log("draw4 called.");
                 //ドロー4が最後に出されたかどうかを更新する
                 room.is_draw4_last_played = false;
@@ -58,7 +60,9 @@ module.exports = (io) => {
                 is_forced_drawed = true;
               }
               //場のカードがドロー2の場合
-              else if(room.current_field.special == Special.DRAW_2 && room.is_draw2_last_played){
+              // else if(room.current_field.special == Special.DRAW_2 && room.is_draw2_last_played){
+              else if(room.is_draw2_last_played){
+                console.log("draw2 called.");
                 //ドロー2が最後に出されたかどうかを更新する
                 room.is_draw2_last_played = false;
                 let draw_card1 = room.deck.shift();
@@ -113,6 +117,10 @@ module.exports = (io) => {
     socket.on(SocketConst.EMIT.PLAY_DRAW_CARD, (data) => {
       if(data.is_play_card){
         playCard(null, socket, SocketConst.EMIT.PLAY_DRAW_CARD);
+      }
+      //ここを実装する
+      else{
+        emitNextPlayer(null, null, DrawReason.NOTING, socket);
       }
     });
 
@@ -215,7 +223,7 @@ module.exports = (io) => {
       }
     }
 
-    const emitNextPlayer = (room, player, reason) => {
+    const insideEmitNextPlayer = (room, player, reason) => {
       //next_playerイベントを発火させるための処理
       let next_next_player = getNextPlayer(room);
       let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
@@ -227,8 +235,30 @@ module.exports = (io) => {
       room.number_turn_play++;
       let is_must_call_draw_card = (reason == DrawReason.DRAW_2) ? true : false;
       io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
-
+      console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
       room.save();
+    }
+
+    const emitNextPlayer = (room, player, reason, socket) => {
+      if(!room || !player){
+        Room.findOne(
+          { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
+            if (error) {
+              console.error(error);
+              return;
+            }
+            if(room != null){
+              let player = room.players_info.find((player) => {
+                return player.socket_id == socket.id;
+              });
+              updateCurrentPlayer(room);
+              insideEmitNextPlayer(room, player, reason);
+            } 
+          }
+        ); 
+      }else{
+        insideEmitNextPlayer(room, player, reason);
+      }
     }
 
     const playCard = (card_play, socket, socketEvent) => {
@@ -297,17 +327,17 @@ module.exports = (io) => {
               if(card_play.special == Special.DRAW_2){
                 //next_playerイベントを発火させるための処理
                 updateCurrentPlayer(room);
-                emitNextPlayer(room, player, DrawReason.DRAW_2);
+                emitNextPlayer(room, player, DrawReason.DRAW_2, socket);
               }
               else if(card_play.special == Special.SKIP){
                 updateCurrentPlayerForSkip(room);
-                emitNextPlayer(room, player, DrawReason.NOTING);
+                emitNextPlayer(room, player, DrawReason.NOTING, socket);
               }
               else if(card_play.special == Special.REVERSE){
                 //逆方向にする
                 room.is_reverse = !room.is_reverse;
                 updateCurrentPlayer(room);
-                emitNextPlayer(room, player, DrawReason.NOTING);
+                emitNextPlayer(room, player, DrawReason.NOTING, socket);
               }
               else if(card_play.special == Special.WILD){
                 //色をクライアントに選ばせる
@@ -356,7 +386,7 @@ module.exports = (io) => {
                 room.current_field.color = previous_color;
                 card_play.color = previous_color;
                 updateCurrentPlayer(room);
-                emitNextPlayer(room, player, DrawReason.NOTING);
+                emitNextPlayer(room, player, DrawReason.NOTING, socket);
               }
               else if(card_play.special == Special.WHITE_WILD){
                 //次のプレイヤーを取得する
@@ -367,11 +397,11 @@ module.exports = (io) => {
                 room.current_field.color = previous_color;
                 card_play.color = previous_color;
                 updateCurrentPlayer(room);
-                emitNextPlayer(room, player, DrawReason.NOTING);
+                emitNextPlayer(room, player, DrawReason.NOTING, socket);
               }
               else if(card_play.special == null || card_play.number != null){
                 updateCurrentPlayer(room);
-                emitNextPlayer(room, player);
+                emitNextPlayer(room, player, DrawReason.NOTING, socket);
               }
 
             }else{
