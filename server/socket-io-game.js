@@ -16,12 +16,6 @@ module.exports = (io) => {
               let player = room.players_info.find((player) => {
                 return player.socket_id == socket.id;
               });
-              //このプレイヤーが現在の手番のプレイヤーかどうか確認する。
-              // if(room.order[room.current_player] != player._id){
-              //   console.log('INFO: not your turn');
-              //   //ここにペナルティ処理の追加
-              //   return;
-              // }
               //このプレイヤーがroom.binded_playersに含まれているかどうか確認、更新する
               let binded_player = room.binded_players.find((binded_player) => {
                 return binded_player.player_id == player._id;
@@ -36,12 +30,14 @@ module.exports = (io) => {
                   });
                 }
               }
+              console.log("is_draw4 last played: " + room.is_draw4_last_played);
 
               let is_forced_drawed = false;
               let is_playable = false;
 
               //場のカードがワイルドドロー4の場合
               if(room.current_field.special == Special.WILD_DRAW_4 && room.is_draw4_last_played){
+                console.log("draw4 called.");
                 //ドロー4が最後に出されたかどうかを更新する
                 room.is_draw4_last_played = false;
                 //4枚ドローする
@@ -266,7 +262,7 @@ module.exports = (io) => {
               if(card_play.special == Special.DRAW_2){
                 room.is_draw2_last_played = true;
               }else if(card_play.special == Special.WILD_DRAW_4){
-                room.is_wild_draw4_last_played = true;
+                room.is_draw4_last_played = true;
               }
 
               //カードを場に出したことをクライアントに通知する
