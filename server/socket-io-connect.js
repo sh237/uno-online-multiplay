@@ -275,8 +275,10 @@ module.exports = (io) => {
     }
     room.deck = deck;
     //ランダムにdeckとorderを並び替える
-    // room.deck = shuffle(room.deck);
-    room.order = shuffle(room.order);
+    room.deck = shuffle(room.deck);
+
+    //一時的にコメントアウト
+    // room.order = shuffle(room.order);
     room.current_player = 0;
     //current_fieldをdeckからランダムに取り出す
     room.current_field = room.deck.splice(Math.floor(Math.random() * room.deck.length), 1)[0];

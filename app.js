@@ -10,15 +10,17 @@ const socket_io_game = require('./server/socket-io-game');
 
 const options = {
 	useUnifiedTopology : true,
-	useNewUrlParser : true
+	useNewUrlParser : true,
 }
 
 mongoose.connect('mongodb://127.0.0.1/test_db',options);
 
 const db = mongoose.connection;
-
+let session = null;
 db.on('error', console.error.bind(console, 'DB connection error:'));
-db.once('open', () => console.log('DB connection successful'));
+db.once('open', async() => {
+  console.log('DB connection successful'); 
+});
 
 const PORT = process.env.PORT || 3002
 var app = express();
@@ -41,6 +43,5 @@ app.use('/', indexRouter);
 app.use('/rooms', roomsRouter );
 
 server.listen(PORT, () => console.log(`Server has started on port ${PORT}`));
-
 
 

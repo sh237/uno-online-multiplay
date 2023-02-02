@@ -15,6 +15,7 @@ const RoomSchema = mongoose.Schema({
     uno_declared:[String],//uno宣言したプレイヤーのid
     is_draw4_last_played: Boolean,//draw4が最後に出されたかどうか
     is_draw2_last_played: Boolean,//draw2が最後に出されたかどうか
+    previous_field:{color:String,special:String,number:Number},//前の場のカード(CHALLENGE用)
 });
 
 module.exports = mongoose.model('Room',RoomSchema);

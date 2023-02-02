@@ -1,5 +1,5 @@
 const Room = require('../room_data');
-
+const mongoose = require('mongoose');
 
 const SocketConst = {
     EMIT: {
@@ -50,6 +50,28 @@ module.exports = {
     Special: Special,
     Color: Color,
     DrawReason: DrawReason,
+
+    runTransaction : async function (session, operations, args) {
+        session = await mongoose.startSession();
+        try {
+            console.log("session",session);
+            // Start a transaction
+            await session.startTransaction();
+            // Perform operations in the transaction
+            operations(...args);
+            // Commit the transaction
+            await session.commitTransaction();
+            console.log("Transaction completed");
+        } catch (error) {
+            console.log("Transaction aborting due to error:", error);
+            // Abort the transaction if something went wrong
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            // End the session
+            session.endSession();
+        }
+    },
 
     checkMustCallDrawCard : function(room,room_name, player_id) {
         if(!room){
