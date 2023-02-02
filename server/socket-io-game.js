@@ -17,7 +17,7 @@ module.exports = (io) => {
         await runTransaction(session, playCard,[null, socket, SocketConst.EMIT.PLAY_DRAW_CARD,session]);
       }
       else{
-        emitNextPlayer(null, null, DrawReason.NOTING, socket);
+        emitNextPlayer(null, null, DrawReason.NOTING, socket, session);
       }
     });
 
@@ -30,59 +30,9 @@ module.exports = (io) => {
     });
 
     socket.on(SocketConst.EMIT.CHALLENGE, async(data) => {
-      Room.findOne(
-        { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
-          if (error) {
-            console.error(error);
-            return;
-          }
-          if(room != null){
-            let player = room.players_info.find((player) => {
-              return player.socket_id == socket.id;
-            });
-            let before_player = getPreviousPlayer(room);
-            let previous_field = room.previous_field;
-            let is_challenge_success = false;
-            for (let i = 0; i < before_player.cards.length; i++){
-              if(before_player.cards[i].special == Special.WILD || before_player.cards[i].special == Special.WHITE_WILD || before_player.cards[i].special == Special.WILD_SHUFFLE || before_player.cards[i].special == previous_field.special || before_player.cards[i].color == previous_field.color || before_player.cards[i].number == previous_field.number){
-                is_challenge_success = true;
-                break;
-              }
-            }
-            io.sockets.in(room.room_name).emit(SocketConst.EMIT.CHALLENGE, {challenger: player._id, target: before_player._id, is_challenge: true, is_challenge_success: is_challenge_success});
-            console.log("EVENT EMIT (" + player.player_name + "): CHALLENGE to " + "room:" + room.room_name);
-            if(is_challenge_success){
-              //チャレンジ成功,before_playerはカードを4枚引く
-              //4枚ドローし、それとワイルドドロー4をbefore_playerの手札に加える
-              let draw_cards = [];
-              for(let i = 0; i < 4; i++){
-                draw_cards.push(room.deck.shift());
-                before_player.cards.push(draw_cards[i]);
-              }
-              let wild_draw_4 = {special:Special.WILD_DRAW_4, color:null, number:null};
-              draw_cards.push(wild_draw_4);
-              before_player.cards.push(wild_draw_4);
-
-              io.to(before_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:true});
-              console.log("EVENT EMIT (" + before_player.player_name +"): RECEIVER_CARD to  "+before_player.player_name);
-              room.current_field = room.previous_field;
-              //もう一度プレイヤーのターンになる
-              emitNextPlayer(room, player, "challenge", socket);
-            }else{
-              //チャレンジ失敗,playerはコードを6枚引く
-              //6枚ドローする
-              let draw_cards = [];
-              for(let i = 0; i < 6; i++){
-                draw_cards.push(room.deck.shift());
-                player.cards.push(draw_cards[i]);
-              }
-              io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:true});
-              console.log("EVENT EMIT (" + player.player_name +"): RECEIVER_CARD to  "+player.player_name);
-              updateCurrentPlayer(room);
-              emitNextPlayer(room, player, DrawReason.NOTING, socket);
-            }
-          }
-      });
+      if(data.is_challenge){
+        await runTransaction(session, challenge,[socket,session]);
+      }
     });
 
 
@@ -294,7 +244,7 @@ module.exports = (io) => {
       }
     }
 
-    const insideEmitNextPlayer = async(room, player, reason) => {
+    const insideEmitNextPlayer = async(room, player, reason, session) => {
       //next_playerイベントを発火させるための処理
       let next_next_player = getNextPlayer(room);
       let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
@@ -307,30 +257,73 @@ module.exports = (io) => {
       if(reason == "challenge"){
         player = room.getPreviousPlayer(room);
       }
-      await room.save();
+      await room.save({session});
       io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
       console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
     }
 
-    const emitNextPlayer = (room, player, reason, socket) => {
+    const emitNextPlayer = async(room, player, reason, socket, session) => {
       if(!room || !player){
-        Room.findOne(
-          { players_info: { $elemMatch: { socket_id: socket.id } } }, (error, room) => {
-            if (error) {
-              console.error(error);
-              return;
-            }
-            if(room != null){
-              let player = room.players_info.find((player) => {
-                return player.socket_id == socket.id;
-              });
-              updateCurrentPlayer(room);
-              insideEmitNextPlayer(room, player, reason);
-            } 
-          }
-        ); 
+        let room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
+        if(room != null){
+          let player = room.players_info.find((player) => {
+            return player.socket_id == socket.id;
+          });
+          updateCurrentPlayer(room);
+          insideEmitNextPlayer(room, player, reason, session);
+        } 
       }else{
-        insideEmitNextPlayer(room, player, reason);
+        insideEmitNextPlayer(room, player, reason, session);
+      }
+    }
+
+    const challenge = async(socket, session) => {
+      const room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
+      if(room != null){
+        let player = room.players_info.find((player) => {
+          return player.socket_id == socket.id;
+        });
+        let before_player = getPreviousPlayer(room);
+        let previous_field = room.previous_field;
+        let is_challenge_success = false;
+        for (let i = 0; i < before_player.cards.length; i++){
+          if(before_player.cards[i].special == Special.WILD || before_player.cards[i].special == Special.WHITE_WILD || before_player.cards[i].special == Special.WILD_SHUFFLE || before_player.cards[i].special == previous_field.special || before_player.cards[i].color == previous_field.color || before_player.cards[i].number == previous_field.number){
+            is_challenge_success = true;
+            break;
+          }
+        }
+        io.sockets.in(room.room_name).emit(SocketConst.EMIT.CHALLENGE, {challenger: player._id, target: before_player._id, is_challenge: true, is_challenge_success: is_challenge_success});
+        console.log("EVENT EMIT (" + player.player_name + "): CHALLENGE to " + "room:" + room.room_name);
+        if(is_challenge_success){
+          //チャレンジ成功,before_playerはカードを4枚引く
+          //4枚ドローし、それとワイルドドロー4をbefore_playerの手札に加える
+          let draw_cards = [];
+          for(let i = 0; i < 4; i++){
+            draw_cards.push(room.deck.shift());
+            before_player.cards.push(draw_cards[i]);
+          }
+          let wild_draw_4 = {special:Special.WILD_DRAW_4, color:null, number:null};
+          draw_cards.push(wild_draw_4);
+          before_player.cards.push(wild_draw_4);
+
+          io.to(before_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:true});
+          console.log("EVENT EMIT (" + before_player.player_name +"): RECEIVER_CARD to  "+before_player.player_name);
+          room.current_field = room.previous_field;
+          //もう一度プレイヤーのターンになる
+          emitNextPlayer(room, player, "challenge", socket, session);
+        }else{
+          //チャレンジ失敗,playerはコードを6枚引く
+          //6枚ドローする
+          let draw_cards = [];
+          for(let i = 0; i < 6; i++){
+            draw_cards.push(room.deck.shift());
+            player.cards.push(draw_cards[i]);
+          }
+          io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:true});
+          console.log("EVENT EMIT (" + player.player_name +"): RECEIVER_CARD to  "+player.player_name);
+          updateCurrentPlayer(room);
+          emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
+        }
       }
     }
 
@@ -400,17 +393,17 @@ module.exports = (io) => {
           if(card_play.special == Special.DRAW_2){
             //next_playerイベントを発火させるための処理
             updateCurrentPlayer(room);
-            emitNextPlayer(room, player, DrawReason.DRAW_2, socket);
+            emitNextPlayer(room, player, DrawReason.DRAW_2, socket, session);
           }
           else if(card_play.special == Special.SKIP){
             updateCurrentPlayerForSkip(room);
-            emitNextPlayer(room, player, DrawReason.NOTING, socket);
+            emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
           else if(card_play.special == Special.REVERSE){
             //逆方向にする
             room.is_reverse = !room.is_reverse;
             updateCurrentPlayer(room);
-            emitNextPlayer(room, player, DrawReason.NOTING, socket);
+            emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
           else if(card_play.special == Special.WILD){
             //色をクライアントに選ばせる
@@ -459,7 +452,7 @@ module.exports = (io) => {
             room.current_field.color = previous_color;
             card_play.color = previous_color;
             updateCurrentPlayer(room);
-            emitNextPlayer(room, player, DrawReason.NOTING, socket);
+            emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
           else if(card_play.special == Special.WHITE_WILD){
             //次のプレイヤーを取得する
@@ -470,11 +463,11 @@ module.exports = (io) => {
             room.current_field.color = previous_color;
             card_play.color = previous_color;
             updateCurrentPlayer(room);
-            emitNextPlayer(room, player, DrawReason.NOTING, socket);
+            emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
           else if(card_play.special == null || card_play.number != null){
             updateCurrentPlayer(room);
-            emitNextPlayer(room, player, DrawReason.NOTING, socket);
+            emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
 
         }else{
