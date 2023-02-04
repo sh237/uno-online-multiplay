@@ -104,17 +104,7 @@ module.exports = (io) => {
           clearTimeout(timeoutId);
           room.current_field.color = data.color_of_wild;
           //next_playerイベントを発火させるための処理
-          let next_next_player = getNextPlayer(room);
-          let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
-          let number_card_of_player = {};
-          room.players_info.forEach((player) => {
-            number_card_of_player[player._id] = player.cards.length;
-          });
-          room.number_turn_play++;
-          let is_must_call_draw_card = (reason == DrawReason.WILD_DRAW_4) ? true : false;
-          await room.save({session});
-          io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
-          console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
+          emitNextPlayer(room, player, reason, socket, session);
           resolve(data);
         });
       });
@@ -166,7 +156,7 @@ module.exports = (io) => {
         number_card_of_player[player._id] = player.cards.length;
       });
       room.number_turn_play++;
-      let is_must_call_draw_card = (reason == DrawReason.DRAW_2) ? true : false;
+      let is_must_call_draw_card = (reason == DrawReason.DRAW_2 || reason == DrawReason.WILD_DRAW_4) ? true : false;
       if(reason == "challenge"){
         player = getPreviousPlayer(room);
       }
@@ -523,11 +513,13 @@ module.exports = (io) => {
             let sorted_players_info = [];
             for(let i = 0; i < room.order.length; i++){
               let player = temp.find((player) => player._id == room.order[i]);
+              player.cards = [];
               sorted_players_info.push(player);
             }
             let next_player = getNextPlayer(room);
             let next_player_index = sorted_players_info.findIndex((player) => player._id == next_player._id);
             sorted_players_info.slice(next_player_index).concat(sorted_players_info.slice(0, next_player_index));
+            console.log("sorted_players_info: " + JSON.stringify(sorted_players_info));
             for(let i = 0; i < all_cards.length; i++){
               sorted_players_info[i % sorted_players_info.length].cards.push(all_cards[i]);
             }
@@ -541,10 +533,9 @@ module.exports = (io) => {
               io.to(room.players_info[i].socket_id).emit(SocketConst.EMIT.SHUFFLE_WILD, {cards_receive:room.players_info[i].cards});
             }
             //場の色は前の色にする
-            room.current_field.color = previous_color;
-            card_play.color = previous_color;
+            socket.emit(SocketConst.EMIT.COLOR_OF_WILD, {});
             updateCurrentPlayer(room);
-            emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
+            waitForChangeColor(room, player, DrawReason.NOTING, session);
           }
           else if(card_play.special == Special.WHITE_WILD){
             //次のプレイヤーを取得する

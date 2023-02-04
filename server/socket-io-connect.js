@@ -276,6 +276,8 @@ module.exports = (io) => {
     room.deck = deck;
     //ランダムにdeckとorderを並び替える
     room.deck = shuffle(room.deck);
+    //要削除
+    room.deck.push({color: null, special: Special.WILD_SHUFFLE, number: null});
 
     //一時的にコメントアウト
     // room.order = shuffle(room.order);
