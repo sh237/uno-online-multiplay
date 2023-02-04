@@ -204,9 +204,11 @@ module.exports = (io) => {
       if(reason == "challenge"){
         player = getPreviousPlayer(room);
       }
-      await room.save({session});
       io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
       console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
+      if(reason != 'draw-card'){
+        await room.save({session});
+      }
     }
 
     const emitNextPlayer = async(room, player, reason, socket, session) => {
@@ -266,7 +268,6 @@ module.exports = (io) => {
         }
         //場のカードがドロー2の場合
         else if(room.is_draw2_last_played){
-          console.log("draw2 called.");
           //ドロー2が最後に出されたかどうかを更新する
           room.is_draw2_last_played = false;
           let draw_cards = [];
@@ -297,7 +298,7 @@ module.exports = (io) => {
         }
         if(!is_playable || is_forced_drawed){
           //next_playerイベントを発火させるための処理
-          emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
+          emitNextPlayer(room, player, "draw-card", socket, session);
         }
       }
       //saveする
@@ -436,13 +437,10 @@ module.exports = (io) => {
           return card.color == card_play.color && card.special == card_play.special && card.number == card_play.number;
         });
         if(index != -1){
-          console.log("card_play.special", card_play.special, "card_play.special == Special.DRAW_2", card_play.special == Special.DRAW_2, "card_play.special == Special.WILD_DRAW_4", card_play.special == Special.WILD_DRAW_4);
           //場に出したカードがDRAW_2、WILD_DRAW_4の場合roomの値を更新
           if(card_play.special == Special.DRAW_2){
-            console.log("updated is_draw2_last_played");
             room.is_draw2_last_played = true;
           }else if(card_play.special == Special.WILD_DRAW_4){
-            console.log("updated is_draw4_last_played");
             room.is_draw4_last_played = true;
             //room.previous_fieldの更新
             room.previous_field = room.current_field;
@@ -553,7 +551,6 @@ module.exports = (io) => {
             let next_player = getNextPlayer(room);
             let next_player_index = sorted_players_info.findIndex((player) => player._id == next_player._id);
             sorted_players_info.slice(next_player_index).concat(sorted_players_info.slice(0, next_player_index));
-            console.log("sorted_players_info: " + JSON.stringify(sorted_players_info));
             for(let i = 0; i < all_cards.length; i++){
               sorted_players_info[i % sorted_players_info.length].cards.push(all_cards[i]);
             }
