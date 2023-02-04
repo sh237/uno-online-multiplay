@@ -60,7 +60,7 @@ const Room = () => {
             navigate('/');
         });
         return () => {
-            // componentWillUnmount のタイミングで実行したい処理を記述
+            // componentWillUnmountで実行したい処理
             socket.off("currentPlayers");
             socket.off('startGame');
           }

@@ -325,7 +325,7 @@ input:focus { box-shadow: inset 0 -5px 45px rgba(100,100,100,0.4), 0 1px 1px rgb
   left:-3px;
 }
 .player1{
-  width: 50%;
+  width: 40%;
   position: absolute;
   bottom: 0;
   left: 30%;
@@ -338,7 +338,7 @@ input:focus { box-shadow: inset 0 -5px 45px rgba(100,100,100,0.4), 0 1px 1px rgb
 }
 .player3{
   transform:rotate(180deg);
-  width: 50%;
+  width: 40%;
   position: absolute;
   top: 0;
   right: 30%;
