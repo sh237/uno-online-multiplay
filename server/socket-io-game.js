@@ -316,13 +316,13 @@ module.exports = (io) => {
       }
     }
 
-
     const hasNotChallenged = async (socket, session) => {
       const room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
       if(room != null){
         let player = room.players_info.find((player) => {
           return player.socket_id == socket.id;
         });
+        room.is_draw4_last_played = false;
         //プレイヤーに4枚引かせる
         let draw_cards = [];
         for(let i = 0; i < 4; i++){
@@ -335,7 +335,6 @@ module.exports = (io) => {
         emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
       }
     }
-        
 
     const challenge = async(socket, session) => {
       const room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
