@@ -338,14 +338,14 @@ function Game() {
 
   //
   function selectCard(v) {
-    //console.log(v);
+    //console.log(v.special===Special.WILD , v.special===Special.WILD_DRAW_4 , v.special===Special.WILD_SHUFFLE , v.special===Special.WHITE_WILD , v.color===fieldCard.color , v.number===fieldCard.number);
     //自分のターンじゃない
     if(!isMyTurn){
       console.log("not my turn");
       return;
     }
     //カードが適切かの処理
-    if(!(v.special===Special.WILD || v.special===Special.WILD_DRAW_4 || v.special===Special.WILD_SHUFFLE || v.special===Special.WHITE_WILD || v.color===fieldCard.color || v.number===fieldCard.number)){
+    if(!(v.special===Special.WILD || v.special===Special.WILD_DRAW_4 || v.special===Special.WILD_SHUFFLE || v.special===Special.WHITE_WILD || v.color===fieldCard.color || (v.number!==null && fieldCard.number!==null && v.number===fieldCard.number) || (v.special!==null && fieldCard.special!==null && v.special===fieldCard.special))){
       console.log("invalid play card");
       return;
     }
@@ -427,13 +427,13 @@ function Game() {
                 <p className={`special-${fieldCard.special}-3`}></p>
                 <p className={`special-${fieldCard.special}-4`}></p>
               </div>}
-              {fieldCard.special=="wild_draw_4" && <div>
+              {fieldCard.special=="wild_draw_4" && <div style={{height:'40px'}}>
                 <p className={`special-${fieldCard.special}-1 yellow`}></p>
                 <p className={`special-${fieldCard.special}-2 blue`}></p>
                 <p className={`special-${fieldCard.special}-3 red`}></p>
                 <p className={`special-${fieldCard.special}-4 green`}></p>
               </div>}
-              {fieldCard.special=="wild" && <div>
+              {fieldCard.special=="wild" && <div style={{height:'40px'}}>
                 <p className={`special-${fieldCard.special}-1 red`}></p>
                 <p className={`special-${fieldCard.special}-2 blue`}></p>
                 <p className={`special-${fieldCard.special}-3 yellow`}></p>
