@@ -1,14 +1,11 @@
 const Room = require('../room_data');
-const mongoose = require('mongoose');
-const { connection } = mongoose;
 const { session } = require('../app');
-const { SocketConst, Special, Color, DrawReason, runTransaction, shuffle } = require('./socket-io-common');
+const { SocketConst, Special, DrawReason, runTransaction, shuffle } = require('./socket-io-common');
 
 module.exports = (io) => {
   io.on('connection', socket => {
 
     socket.on(SocketConst.EMIT.DRAW_CARD, async () => {
-        console.log("session",session);
         await runTransaction(session, drawCard,[socket, session]);
       });
 
@@ -302,7 +299,8 @@ module.exports = (io) => {
         let target_player = room.players_info.find((player) => {
           return player._id == target_id;
         });
-        if(index == -1 && target_player.cards.length == 1){
+        console.log("index: " + index, "target_player.cards.length: " + target_player.cards.length);
+        if((room.uno_declared.length == 0 || index == -1) && target_player.cards.length == 1){
           //ペナルティとして対象プレイヤーにカードを2枚引かせる
           let draw_cards = [];
           for(let i = 0; i < 2; i++){
@@ -312,6 +310,12 @@ module.exports = (io) => {
 
           io.to(target_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:true});
           console.log("EVENT EMIT (" + player.player_name + "): RECEIVER_CARD to "+target_player.player_name);
+          io.sockets.in(room.room_name).emit(SocketConst.EMIT.POINTED_NOT_SAY_UNO, {pointer:player._id, target:target_player._id, have_say_uno:false});
+          console.log("EVENT EMIT (" + player.player_name + "): POINTED_NOT_SAY_UNO to room "+ false);
+        }
+        else{
+          io.sockets.in(room.room_name).emit(SocketConst.EMIT.POINTED_NOT_SAY_UNO, {pointer:player._id, target:target_player._id, have_say_uno:true});
+          console.log("EVENT EMIT (" + player.player_name + "): POINTED_NOT_SAY_UNO to room "+ true);
         }
       }
     }
