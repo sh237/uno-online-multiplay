@@ -32,6 +32,8 @@ module.exports = (io) => {
     socket.on(SocketConst.EMIT.CHALLENGE, async(data) => {
       if(data.is_challenge){
         await runTransaction(session, challenge,[socket,session]);
+      }else{
+        emitNextPlayer(null, null, DrawReason.NOTING, socket, session);
       }
     });
 
@@ -58,15 +60,11 @@ module.exports = (io) => {
             });
           }
         }
-        console.log("is_draw4 last played: " + room.is_draw4_last_played);
-        console.log("is_draw2 last played: " + room.is_draw2_last_played);
-
         let is_forced_drawed = false;
         let is_playable = false;
 
         //場のカードがワイルドドロー4の場合
         if(room.is_draw4_last_played){
-          console.log("draw4 called.");
           //ドロー4が最後に出されたかどうかを更新する
           room.is_draw4_last_played = false;
           //4枚ドローする
@@ -133,22 +131,20 @@ module.exports = (io) => {
 
       //saveする
       await room.save({session});
-
     }
     
-
     const getPreviousPlayer = (room) => {
       if(room.is_reverse){
         if(room.current_player == 3){
-          before_player = room.players_info.find((player) => player._id == room.order[0]);
+          return room.players_info.find((player) => player._id == room.order[0]);
         }else{
-          before_player = room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
+          return room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
         }
       }else{
         if(room.current_player == 0){
-          before_player = room.players_info.find((player) => player._id == room.order[3]);
+          return room.players_info.find((player) => player._id == room.order[3]);
         }else{
-          before_player = room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
+          return room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
         }
       }
     }
@@ -255,7 +251,7 @@ module.exports = (io) => {
       room.number_turn_play++;
       let is_must_call_draw_card = (reason == DrawReason.DRAW_2) ? true : false;
       if(reason == "challenge"){
-        player = room.getPreviousPlayer(room);
+        player = getPreviousPlayer(room);
       }
       await room.save({session});
       io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
@@ -294,6 +290,8 @@ module.exports = (io) => {
         }
         io.sockets.in(room.room_name).emit(SocketConst.EMIT.CHALLENGE, {challenger: player._id, target: before_player._id, is_challenge: true, is_challenge_success: is_challenge_success});
         console.log("EVENT EMIT (" + player.player_name + "): CHALLENGE to " + "room:" + room.room_name);
+        io.to(player.socket_id).emit(SocketConst.EMIT.PUBLIC_CARD, {card_of_player:before_player._id,cards:before_player.cards});
+        console.log("EVENT EMIT (" + player.player_name + "): PUBLIC_CARD to " + player.player_name);
         if(is_challenge_success){
           //チャレンジ成功,before_playerはカードを4枚引く
           //4枚ドローし、それとワイルドドロー4をbefore_playerの手札に加える
@@ -361,6 +359,35 @@ module.exports = (io) => {
           room.number_card_play++;
           player.cards.splice(index,1);
 
+          //プレイヤーのカードが0枚になった場合
+          if(player.cards.length == 0){
+            let temp_scores = {};
+            let scores = {};
+            for(let i = 0; i < room.players_info.length; i ++){
+              temp_scores[room.players_info[i]._id] = 0;
+              scores[room.players_info[i]._id] = 0;
+              for(let j = 0; j < room.players_info[i].cards.length; j++){
+                if(room.players_info[i].cards[j].number != null){
+                  temp_scores[room.players_info[i]._id] += room.players_info[i].cards[j].number;
+                }else if(room.players_info[i].cards[j].special == Special.DRAW_2 || room.players_info[i].cards[j].special == Special.REVERSE || room.players_info[i].cards[j].special == Special.SKIP){
+                  temp_scores[room.players_info[i]._id] += 20;
+                }else if(room.players_info[i].cards[j].special == Special.SHUFFLE_WILD || room.players_info[i].cards[j].special == Special.WHITE_WILD){
+                  temp_scores[room.players_info[i]._id] += 40;
+                }else if(room.players_info[i].cards[j].special == Special.WILD_DRAW_4 || room.players_info[i].cards[j].special == Special.WILD){
+                  temp_scores[room.players_info[i]._id] += 50;
+                }
+              }
+            }
+            for(let i = 0; i < room.players_info.length; i++){
+              if(room.players_info[i]._id != player._id){
+                scores[player._id] += temp_scores[room.players_info[i]._id];
+                scores[room.players_info[i]._id] -= temp_scores[room.players_info[i]._id];
+              }
+            }
+            io.sockets.in(room.room_name).emit(SocketConst.EMIT.FINISH_TURN, {turn_no:room.number_turn_play, winner:player._id, score:scores});
+            console.log("EVENT EMIT(" + player.player_name + "): FINISH_TURN to room.");
+          }
+
           //カードを場に出したことをクライアントに通知する
           if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
             //room.uno_declaredにプレイヤーのidがあるか確認し、なければ追加する
@@ -388,7 +415,6 @@ module.exports = (io) => {
               console.log("EVENT EMIT (" + player.player_name + "): PLAY_DRAW_CARD to room. PLAYED " + room.current_field);
             }
           }
-
 
           if(card_play.special == Special.DRAW_2){
             //next_playerイベントを発火させるための処理
@@ -488,7 +514,6 @@ module.exports = (io) => {
       }
     }
   });
-  
 }
 
 
