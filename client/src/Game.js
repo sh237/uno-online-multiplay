@@ -62,7 +62,6 @@ function Game() {
   const [canPlayDrawCard,setCanPlayDrawCard] = useState(false);
   const [canSelectColor,setCanSelectColor] = useState(false);
   const [isChallenge,setIsChallenge] = useState(false);
-  const [displayPointedNotSayUno,setDisplayPointedNotSayUno] = useState(false);
   const [pointedNotSayUnoResult,setPointedNotSayUnoResult] = useState("");
   const [sayUnoPlayer,setSayUnoPlayer] = useState("");
   const [countSpecialLogic,setCountSpecialLogic] = useState(10);
@@ -196,20 +195,20 @@ function Game() {
     });
     
     socket.on(SocketConst.EMIT.CHALLENGE, (dataRes) => {
-      // if (dataRes.is_challenge) {
-      //   if (dataRes.is_challenge_success) {
-      //     console.log(`${dataRes.challenger} challenge successfully!`);
-      //   } else {
-      //     console.log(`${dataRes.challenger} challenge failed!`);
-      //   }
-      // } else {
-      //   console.log(`${dataRes.challenger} no challenge.`);
-      // }
+      if (dataRes.is_challenge) {
+        if (dataRes.is_challenge_success) {
+          console.log(`${dataRes.challenger} challenge successfully!`);
+        } else {
+          console.log(`${dataRes.challenger} challenge failed!`);
+        }
+      } else {
+        console.log(`${dataRes.challenger} no challenge.`);
+      }
     });
     
     socket.on(SocketConst.EMIT.PUBLIC_CARD, (dataRes) => {
-      // console.log(`Public card of player ${dataRes.card_of_player}.`);
-      // console.log(dataRes.cards);
+      console.log(`Public card of player ${dataRes.card_of_player}.`);
+      console.log(dataRes.cards);
     });
     
     socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, (dataRes) => {
@@ -245,11 +244,11 @@ function Game() {
       console.log("on:NEXT_PLAYER",dataRes);
       //setFieldCard(dataRes.card_before);
       if(dataRes.must_call_draw_card){
-        // if(dataRes.draw_reason==DrawReason.WILD_DRAW_4){
-        //   setIsChallenge(true);
-        // }else{
+        if(dataRes.draw_reason==DrawReason.WILD_DRAW_4){
+          setIsChallenge(true);
+        }else{
           sendDrawCard();
-        // }
+        }
       }else{
         setIsMyTurn(true);
       }
@@ -404,7 +403,7 @@ function Game() {
 
   return (
     <div className="game">
-      <div className="field">
+      <div className="field" style={{zIndex:"10"}}>
         <div className="Deck">
           <div onClick={drawCard} className="card black">
             <div className="ellipse red">
@@ -460,17 +459,6 @@ function Game() {
         </div>}
         
         <div>
-          <p>pointed not say uno</p>
-          <button onClick={()=>{setDisplayPointedNotSayUno(!displayPointedNotSayUno)}}>{!displayPointedNotSayUno ? "open" : "close"}</button>
-          {displayPointedNotSayUno && <div>
-            <p>select target player</p>
-            {playersList.map((v)=>{
-              if(v!=context.playerId){
-                return <button onClick={()=>{onPointedNotSayUno(v)}} key={v}>{v}</button>
-              }
-            })
-            }
-          </div>}
           {pointedNotSayUnoResult && <div>
             <p>{pointedNotSayUnoResult}</p>
             <button onClick={setPointedNotSayUnoResult("")}>close</button>
@@ -538,7 +526,12 @@ function Game() {
             </div>
 
       {Object.keys(playersCardList).map((key,i) => (
-        <div key={i} className={`player-card player${i+2} `}>
+        <div className={`player${i+2} `}>
+          <div>
+            <p>ID : {key}</p>
+            <button style={{display:'inline-block'}} onClick={()=>{onPointedNotSayUno(key)}}>pointed not say uno</button>
+          </div>
+        <div key={i} className={`player-card`}>
           {playersCardList[key].map((v,i)=>(
             <div className="card black">
               <div className="ellipse red">
@@ -546,6 +539,7 @@ function Game() {
               </div>
             </div>
           ))}
+        </div>
         </div>
       ))}
 
