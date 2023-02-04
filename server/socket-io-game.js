@@ -120,6 +120,27 @@ module.exports = (io) => {
       }
     };
 
+    const checkAndRemoveBindedPlayers = (room, player) => {
+      //このプレイヤーがroom.binded_playersに含まれているかどうか確認、更新する
+      let binded_player = room.binded_players.find((binded_player) => {
+        return binded_player.player_id == player._id;
+      });
+      if(binded_player != null){
+        if(binded_player.remain_turn == 2){
+          binded_player.remain_turn --;
+          return 1;
+        }else if(binded_player.remain_turn == 1){
+          //このプレイヤーをroom.binded_playersから削除する
+          room.binded_players = room.binded_players.filter((binded_player) => {
+            return binded_player.player_id != player._id;
+          });
+          return 0;
+        }
+      }else{
+        return -1;
+      }
+    };
+
     //For debugging
     const getPlayerNameBySocketId = (room, socket_id) =>{
       let player = room.players_info.find((player) => player.socket_id == socket_id);
@@ -148,6 +169,23 @@ module.exports = (io) => {
     }
 
     const insideEmitNextPlayer = async(room, player, reason, session) => {
+      let bindCheckedRes = checkAndRemoveBindedPlayers(room, getNextPlayer(room));
+      if(bindCheckedRes == 0){
+        player = getNextPlayer(room);
+        //次のプレイヤーをスキップする
+        updateCurrentPlayerForSkip(room);
+      }else if(bindCheckedRes == 1){
+        player = getNextPlayer(room);
+        //次のプレイヤーをスキップする
+        updateCurrentPlayerForSkip(room);
+      }else{
+        if(reason == "skip"){
+          updateCurrentPlayerForSkip(room);
+        }else{
+          updateCurrentPlayer(room);
+        }
+      }
+
       //next_playerイベントを発火させるための処理
       let next_next_player = getNextPlayer(room);
       let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
@@ -172,7 +210,6 @@ module.exports = (io) => {
           let player = room.players_info.find((player) => {
             return player.socket_id == socket.id;
           });
-          updateCurrentPlayer(room);
           insideEmitNextPlayer(room, player, reason, session);
         } 
       }else{
@@ -189,20 +226,7 @@ module.exports = (io) => {
         });
         //room.uno_declaredにプレイヤーのidがあるか確認し、あれば削除する
         checkAndRemoveUnoDeclared(room, player);
-        //このプレイヤーがroom.binded_playersに含まれているかどうか確認、更新する
-        let binded_player = room.binded_players.find((binded_player) => {
-          return binded_player.player_id == player._id;
-        });
-        if(binded_player != null){
-          if(binded_player.remain_turn == 2){
-            binded_player.remain_turn --;
-          }else if(binded_player.remain_turn == 1){
-            //このプレイヤーをroom.binded_playersから削除する
-            room.binded_players = room.binded_players.filter((binded_player) => {
-              return binded_player.player_id != player._id;
-            });
-          }
-        }
+        
         let is_forced_drawed = false;
         let is_playable = false;
 
@@ -271,7 +295,6 @@ module.exports = (io) => {
           console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to " + next_player.player_name);
         }
       }
-
       //saveする
       await room.save({session});
     }
@@ -325,7 +348,6 @@ module.exports = (io) => {
         }
         io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:false});
         console.log("EVENT EMIT (" + player.player_name + "): RECEIVER_CARD to "+player.player_name);
-        updateCurrentPlayer(room);
         emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
       }
     }
@@ -376,7 +398,6 @@ module.exports = (io) => {
           }
           io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:true});
           console.log("EVENT EMIT (" + player.player_name +"): RECEIVER_CARD to  "+player.player_name);
-          updateCurrentPlayer(room);
           emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
         }
       }
@@ -474,29 +495,24 @@ module.exports = (io) => {
 
           if(card_play.special == Special.DRAW_2){
             //next_playerイベントを発火させるための処理
-            updateCurrentPlayer(room);
             emitNextPlayer(room, player, DrawReason.DRAW_2, socket, session);
           }
           else if(card_play.special == Special.SKIP){
-            updateCurrentPlayerForSkip(room);
-            emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
+            emitNextPlayer(room, player, "skip", socket, session);
           }
           else if(card_play.special == Special.REVERSE){
             //逆方向にする
             room.is_reverse = !room.is_reverse;
-            updateCurrentPlayer(room);
             emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
           else if(card_play.special == Special.WILD){
             //色をクライアントに選ばせる
             socket.emit(SocketConst.EMIT.COLOR_OF_WILD, {});
-            updateCurrentPlayer(room);
             waitForChangeColor(room, player, DrawReason.NOTING, session);
           }
           else if(card_play.special == Special.WILD_DRAW_4){
             //色をクライアントに選ばせる
             socket.emit(SocketConst.EMIT.COLOR_OF_WILD, {});
-            updateCurrentPlayer(room);
             waitForChangeColor(room, player, DrawReason.WILD_DRAW_4, session);
           }
           else if(card_play.special == Special.WILD_SHUFFLE){
@@ -534,7 +550,6 @@ module.exports = (io) => {
             }
             //場の色は前の色にする
             socket.emit(SocketConst.EMIT.COLOR_OF_WILD, {});
-            updateCurrentPlayer(room);
             waitForChangeColor(room, player, DrawReason.NOTING, session);
           }
           else if(card_play.special == Special.WHITE_WILD){
@@ -545,11 +560,9 @@ module.exports = (io) => {
             //場の色は前の色にする
             room.current_field.color = previous_color;
             card_play.color = previous_color;
-            updateCurrentPlayer(room);
             emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
           else if(card_play.special == null || card_play.number != null){
-            updateCurrentPlayer(room);
             emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
 
