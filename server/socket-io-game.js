@@ -7,7 +7,7 @@ module.exports = (io) => {
 
     socket.on(SocketConst.EMIT.DRAW_CARD, async () => {
         await runTransaction(session, drawCard,[socket, session]);
-      });
+    });
 
     socket.on(SocketConst.EMIT.PLAY_DRAW_CARD, async(data) => {
       if(data.is_play_card){
@@ -41,6 +41,11 @@ module.exports = (io) => {
     socket.on(SocketConst.EMIT.POINTED_NOT_SAY_UNO, async(data) => {
       await runTransaction(session, pointedNotSayUno,[data.target, socket, session]);
     });
+
+    socket.on(SocketConst.EMIT.TIME_OUT, async(data) => {
+      await runTransaction(session, timeOut,[socket,session]);
+    });
+
 
 
     const getPreviousPlayer = (room) => {
@@ -347,6 +352,24 @@ module.exports = (io) => {
           player.cards.push(draw_cards[i]);
         }
         io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:false});
+        console.log("EVENT EMIT (" + player.player_name + "): RECEIVER_CARD to "+player.player_name);
+        emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
+      }
+    }
+
+    const timeOut = async (socket, session) => {
+      const room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
+      if(room != null){
+        let player = room.players_info.find((player) => {
+          return player.socket_id == socket.id;
+        });
+        //ペナルティとしてプレイヤーにカードを2枚引かせる
+        let draw_cards = [];
+        for(let i = 0; i < 2; i++){
+          draw_cards.push(room.deck.shift());
+          player.cards.push(draw_cards[i]);
+        }
+        io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:true});
         console.log("EVENT EMIT (" + player.player_name + "): RECEIVER_CARD to "+player.player_name);
         emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
       }

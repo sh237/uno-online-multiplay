@@ -20,6 +20,8 @@ const SocketConst = {
       SPECIAL_LOGIC: 'special-logic',
       FINISH_TURN: 'finish-turn',
       FINISH_GAME: 'finish-game',
+      NOTIFY_CARD: 'notify-card',
+      TIME_OUT: 'time-out',
   },
 };
 const Special = {
