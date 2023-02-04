@@ -15,6 +15,7 @@ const SocketConst = {
       CHALLENGE: 'challenge',
       PUBLIC_CARD: 'public-card',
       SAY_UNO_AND_PLAY_CARD: 'say-uno-and-play-card',
+      SAY_UNO_AND_PLAY_DRAW_CARD: 'say-uno-and-play-draw-card',
       POINTED_NOT_SAY_UNO: 'pointed-not-say-uno',
       SPECIAL_LOGIC: 'special-logic',
       FINISH_TURN: 'finish-turn',

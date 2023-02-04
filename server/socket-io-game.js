@@ -25,6 +25,10 @@ module.exports = (io) => {
       await runTransaction(session, playCard,[data.card_play, socket, SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD,session]);
     });
 
+    socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_DRAW_CARD, async(data) => {
+      await runTransaction(session, playCard,[null, socket, SocketConst.EMIT.SAY_UNO_AND_PLAY_DRAW_CARD,session]);
+    });
+
     socket.on(SocketConst.EMIT.PLAY_CARD, async(data) => {
       await runTransaction(session, playCard,[data.card_play, socket, SocketConst.EMIT.PLAY_CARD,session]);
     });
@@ -33,11 +37,161 @@ module.exports = (io) => {
       if(data.is_challenge){
         await runTransaction(session, challenge,[socket,session]);
       }else{
-        emitNextPlayer(null, null, DrawReason.NOTING, socket, session);
+        await runTransaction(session, hasNotChallenged,[socket,session]);
       }
     });
 
+    socket.on(SocketConst.EMIT.POINTED_NOT_SAY_UNO, async(data) => {
+      await runTransaction(session, pointedNotSayUno,[data.target, socket, session]);
+    });
 
+
+    const getPreviousPlayer = (room) => {
+      if(room.is_reverse){
+        if(room.current_player == 3){
+          return room.players_info.find((player) => player._id == room.order[0]);
+        }else{
+          return room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
+        }
+      }else{
+        if(room.current_player == 0){
+          return room.players_info.find((player) => player._id == room.order[3]);
+        }else{
+          return room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
+        }
+      }
+    }
+
+    const getNextPlayer = (room) => {
+      if(room.is_reverse){
+        if(room.current_player == 0){
+          return room.players_info.find((player) => player._id == room.order[3]);
+        }else{
+          return room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
+        }
+      }else{
+        if(room.current_player == 3){
+          return room.players_info.find((player) => player._id == room.order[0]);
+        }else{
+          return room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
+        }
+      }
+    }
+
+    const updateCurrentPlayer = (room) => {
+      //current_playerを変更する
+      if(room.is_reverse){
+        if(room.current_player == 0){
+          room.current_player = 3;
+        }else{
+          room.current_player = room.current_player - 1;
+        }
+      }else{
+        if(room.current_player == 3){
+          room.current_player = 0;
+        }else{
+          room.current_player = room.current_player + 1;
+        }
+      }
+    };
+
+    const waitForChangeColor = (room, player, reason, session) => {
+      return new Promise((resolve, reject) => {
+        let TIMEOUT = 3000000;
+        const timeoutId = setTimeout(() => {
+          reject(new Error(`Timed out while waiting for change color event`));
+        }, TIMEOUT);
+    
+        socket.on(SocketConst.EMIT.COLOR_OF_WILD, async(data) => {
+          console.log("EVENT ON   (" + player.player_name + "): COLOR_OF_WILD");
+          clearTimeout(timeoutId);
+          room.current_field.color = data.color_of_wild;
+          //next_playerイベントを発火させるための処理
+          let next_next_player = getNextPlayer(room);
+          let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+          let number_card_of_player = {};
+          room.players_info.forEach((player) => {
+            number_card_of_player[player._id] = player.cards.length;
+          });
+          room.number_turn_play++;
+          let is_must_call_draw_card = (reason == DrawReason.WILD_DRAW_4) ? true : false;
+          await room.save({session});
+          io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+          console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
+          resolve(data);
+        });
+      });
+    };
+
+    const checkAndRemoveUnoDeclared = (room, player) => {
+      //room.uno_declaredにプレイヤーのidがあるか確認し、あれば削除する
+      if(room.uno_declared.length > 0){
+        let index = room.uno_declared.findIndex((id) => {return id == player._id;});
+        if(index != -1){
+          room.uno_declared.splice(index,1);
+        }
+      }
+    };
+
+    //For debugging
+    const getPlayerNameBySocketId = (room, socket_id) =>{
+      let player = room.players_info.find((player) => player.socket_id == socket_id);
+      return player.player_name;
+    }
+
+    const updateCurrentPlayerForSkip = (room) => {
+      //次のプレイヤーをスキップする
+      if(room.is_reverse){
+        if(room.current_player == 0){
+          room.current_player = 2;
+        }else if(room.current_player == 1){
+          room.current_player = 3;
+        }else{
+          room.current_player = room.current_player - 2;
+        }
+      }else{
+        if(room.current_player == 2){
+          room.current_player = 0;
+        }else if(room.current_player == 3){
+          room.current_player = 1;
+        }else{
+          room.current_player = room.current_player + 2;
+        }
+      }
+    }
+
+    const insideEmitNextPlayer = async(room, player, reason, session) => {
+      //next_playerイベントを発火させるための処理
+      let next_next_player = getNextPlayer(room);
+      let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+      let number_card_of_player = {};
+      room.players_info.forEach((player) => {
+        number_card_of_player[player._id] = player.cards.length;
+      });
+      room.number_turn_play++;
+      let is_must_call_draw_card = (reason == DrawReason.DRAW_2) ? true : false;
+      if(reason == "challenge"){
+        player = getPreviousPlayer(room);
+      }
+      await room.save({session});
+      io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
+      console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
+    }
+
+    const emitNextPlayer = async(room, player, reason, socket, session) => {
+      if(!room || !player){
+        let room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
+        if(room != null){
+          let player = room.players_info.find((player) => {
+            return player.socket_id == socket.id;
+          });
+          updateCurrentPlayer(room);
+          insideEmitNextPlayer(room, player, reason, session);
+        } 
+      }else{
+        insideEmitNextPlayer(room, player, reason, session);
+      }
+    }
 
     const drawCard = async(socket, session) => {
       const room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
@@ -46,6 +200,8 @@ module.exports = (io) => {
         let player = room.players_info.find((player) => {
           return player.socket_id == socket.id;
         });
+        //room.uno_declaredにプレイヤーのidがあるか確認し、あれば削除する
+        checkAndRemoveUnoDeclared(room, player);
         //このプレイヤーがroom.binded_playersに含まれているかどうか確認、更新する
         let binded_player = room.binded_players.find((binded_player) => {
           return binded_player.player_id == player._id;
@@ -132,146 +288,54 @@ module.exports = (io) => {
       //saveする
       await room.save({session});
     }
-    
-    const getPreviousPlayer = (room) => {
-      if(room.is_reverse){
-        if(room.current_player == 3){
-          return room.players_info.find((player) => player._id == room.order[0]);
-        }else{
-          return room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
-        }
-      }else{
-        if(room.current_player == 0){
-          return room.players_info.find((player) => player._id == room.order[3]);
-        }else{
-          return room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
-        }
-      }
-    }
 
-    const getNextPlayer = (room) => {
-      if(room.is_reverse){
-        if(room.current_player == 0){
-          return room.players_info.find((player) => player._id == room.order[3]);
-        }else{
-          return room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
-        }
-      }else{
-        if(room.current_player == 3){
-          return room.players_info.find((player) => player._id == room.order[0]);
-        }else{
-          return room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
-        }
-      }
-    }
-
-    const updateCurrentPlayer = (room) => {
-      //current_playerを変更する
-      if(room.is_reverse){
-        if(room.current_player == 0){
-          room.current_player = 3;
-        }else{
-          room.current_player = room.current_player - 1;
-        }
-      }else{
-        if(room.current_player == 3){
-          room.current_player = 0;
-        }else{
-          room.current_player = room.current_player + 1;
-        }
-      }
-    };
-
-    const waitForChangeColor = (room, player, reason, session) => {
-      return new Promise((resolve, reject) => {
-        let TIMEOUT = 3000000;
-        const timeoutId = setTimeout(() => {
-          reject(new Error(`Timed out while waiting for change color event`));
-        }, TIMEOUT);
-    
-        socket.on(SocketConst.EMIT.COLOR_OF_WILD, async(data) => {
-          console.log("EVENT ON   (" + player.player_name + "): COLOR_OF_WILD");
-          clearTimeout(timeoutId);
-          room.current_field.color = data.color_of_wild;
-          //next_playerイベントを発火させるための処理
-          let next_next_player = getNextPlayer(room);
-          let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
-          let number_card_of_player = {};
-          room.players_info.forEach((player) => {
-            number_card_of_player[player._id] = player.cards.length;
-          });
-          room.number_turn_play++;
-          let is_must_call_draw_card = (reason == DrawReason.WILD_DRAW_4) ? true : false;
-          await room.save({session});
-          io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
-          console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
-          resolve(data);
+    const pointedNotSayUno = async (target_id, socket, session) => {
+      const room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
+      if(room != null){
+        let player = room.players_info.find((player) => {
+          return player.socket_id == socket.id;
         });
-      });
-    };
+        //対象のプレイヤーがUNOを言っているかどうかを確認
+        let index = room.uno_declared.find((player) => {
+            return player._id == target_id;
+        });
+        let target_player = room.players_info.find((player) => {
+          return player._id == target_id;
+        });
+        if(index == -1 && target_player.cards.length == 1){
+          //ペナルティとして対象プレイヤーにカードを2枚引かせる
+          let draw_cards = [];
+          for(let i = 0; i < 2; i++){
+            draw_cards.push(room.deck.shift());
+            target_player.cards.push(draw_cards[i]);
+          }
 
-    const checkIfUnoDeclare = (room, socket_id) => {
-    };
-
-    //For debugging
-    const getPlayerNameBySocketId = (room, socket_id) =>{
-      let player = room.players_info.find((player) => player.socket_id == socket_id);
-      return player.player_name;
-    }
-
-    const updateCurrentPlayerForSkip = (room) => {
-      //次のプレイヤーをスキップする
-      if(room.is_reverse){
-        if(room.current_player == 0){
-          room.current_player = 2;
-        }else if(room.current_player == 1){
-          room.current_player = 3;
-        }else{
-          room.current_player = room.current_player - 2;
-        }
-      }else{
-        if(room.current_player == 2){
-          room.current_player = 0;
-        }else if(room.current_player == 3){
-          room.current_player = 1;
-        }else{
-          room.current_player = room.current_player + 2;
+          io.to(target_player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:true});
+          console.log("EVENT EMIT (" + player.player_name + "): RECEIVER_CARD to "+target_player.player_name);
         }
       }
     }
 
-    const insideEmitNextPlayer = async(room, player, reason, session) => {
-      //next_playerイベントを発火させるための処理
-      let next_next_player = getNextPlayer(room);
-      let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
-      let number_card_of_player = {};
-      room.players_info.forEach((player) => {
-        number_card_of_player[player._id] = player.cards.length;
-      });
-      room.number_turn_play++;
-      let is_must_call_draw_card = (reason == DrawReason.DRAW_2) ? true : false;
-      if(reason == "challenge"){
-        player = getPreviousPlayer(room);
-      }
-      await room.save({session});
-      io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
-      console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
-    }
 
-    const emitNextPlayer = async(room, player, reason, socket, session) => {
-      if(!room || !player){
-        let room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
-        if(room != null){
-          let player = room.players_info.find((player) => {
-            return player.socket_id == socket.id;
-          });
-          updateCurrentPlayer(room);
-          insideEmitNextPlayer(room, player, reason, session);
-        } 
-      }else{
-        insideEmitNextPlayer(room, player, reason, session);
+    const hasNotChallenged = async (socket, session) => {
+      const room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
+      if(room != null){
+        let player = room.players_info.find((player) => {
+          return player.socket_id == socket.id;
+        });
+        //プレイヤーに4枚引かせる
+        let draw_cards = [];
+        for(let i = 0; i < 4; i++){
+          draw_cards.push(room.deck.shift());
+          player.cards.push(draw_cards[i]);
+        }
+        io.to(player.socket_id).emit(SocketConst.EMIT.RECEIVER_CARD, {cards_receive:draw_cards, is_penalty:false});
+        console.log("EVENT EMIT (" + player.player_name + "): RECEIVER_CARD to "+player.player_name);
+        updateCurrentPlayer(room);
+        emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
       }
     }
+        
 
     const challenge = async(socket, session) => {
       const room = await Room.findOne({ players_info: { $elemMatch: { socket_id: socket.id } } }).session(session);
@@ -331,7 +395,7 @@ module.exports = (io) => {
         let player = room.players_info.find((player) => {
           return player.socket_id == socket.id;
         });
-        if(socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD){
+        if(socketEvent == SocketConst.EMIT.PLAY_DRAW_CARD || socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_DRAW_CARD){
           //プレイヤーの一番最後のカード
           card_play = player.cards[player.cards.length - 1];
         }
@@ -389,23 +453,22 @@ module.exports = (io) => {
           }
 
           //カードを場に出したことをクライアントに通知する
-          if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+          if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD || socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_DRAW_CARD){
             //room.uno_declaredにプレイヤーのidがあるか確認し、なければ追加する
             let index = room.uno_declared.findIndex((id) => { return id == player._id; });
             if(index == -1){
               room.uno_declared.push(player._id);
             }
-            io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
-            console.log("EVENT EMIT (" + player.player_name + "): SAY_UNO_AND_PLAY_CARD to room. PLAYED " + room.current_field);
+            if(socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD){
+              io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, {player:player._id, card_play:card_play, yell_uno:true});
+              console.log("EVENT EMIT (" + player.player_name + "): SAY_UNO_AND_PLAY_CARD to room. PLAYED " + room.current_field);
+            }else{
+              io.sockets.in(room.room_name).emit(SocketConst.EMIT.SAY_UNO_AND_PLAY_DRAW_CARD, {player:player._id, card_play:card_play, yell_uno:true});
+              console.log("EVENT EMIT (" + player.player_name + "): SAY_UNO_AND_PLAY_DRAW_CARD to room. PLAYED " + room.current_field);
+            }
           }
           else{
-            //room.uno_declaredにプレイヤーのidがあるか確認し、あれば削除する
-            if(room.uno_declared.length > 0){
-              let index = room.uno_declared.findIndex((id) => {return id == player._id;});
-              if(index != -1){
-                room.uno_declared.splice(index,1);
-              }
-            }
+            checkAndRemoveUnoDeclared(room, player);
             if(socketEvent == SocketConst.EMIT.PLAY_CARD){
               io.sockets.in(room.room_name).emit(socketEvent, {player:player._id, card_play:card_play});
               console.log("EVENT EMIT (" + player.player_name + "): PLAY_CARD to room. PLAYED " + room.current_field);
