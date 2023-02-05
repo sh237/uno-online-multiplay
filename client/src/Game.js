@@ -71,6 +71,7 @@ function Game() {
   const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
   const [time, setTime] = useState(10);
   const [challengeResult, setChallengeResult] = useState("");
+  const [displayPublicCard, setDisplayPublicCard] = useState({});
   const refTime = useRef(time);
   const refIsMyTurn = useRef(isMyTurn);
   useEffect(() => {
@@ -242,15 +243,23 @@ function Game() {
     socket.on(SocketConst.EMIT.PUBLIC_CARD, (dataRes) => {
       console.log(`Public card of player ${dataRes.card_of_player}.`);
       console.log(dataRes.cards);
-      setPlayersCardList((prevState) => {
-        return { ...prevState, [dataRes.card_of_player]: dataRes.cards};
-      });
+      setDisplayPublicCard(dataRes);
+      setTimeout(()=>{
+        setDisplayPublicCard({});
+      },5000);
+      // setPlayersCardList((prevState) => {
+      //   prevState[dataRes.card_of_player]=dataRes.cards;
+      //   return { ...prevState};
+      // });
     });
     
     socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, (dataRes) => {
       //この時もplaycardイベント変えるならsetFieldとかは必要ない
       if(dataRes.yell_uno){
         setSayUnoPlayer(`${dataRes.player} yell UNO.`);
+        setTimeout(()=>{
+          setSayUnoPlayer("");
+        },5000);
       }
     });
 
@@ -265,6 +274,9 @@ function Game() {
       }else{
         setPointedNotSayUnoResult(`${dataRes.player} no say UNO.`);
       }
+      setTimeout(()=>{
+        setPointedNotSayUnoResult("");
+      },5000);
     });
     
     socket.on(SocketConst.EMIT.FINISH_TURN, (dataRes) => {
@@ -275,6 +287,8 @@ function Game() {
     socket.on(SocketConst.EMIT.FINISH_GAME, (dataRes) => {
       // console.log(dataRes);
       // console.log(`Winner of game ${dataRes.winner}, turn win is ${dataRes.turn_win}.`);
+      context.setWinner(dataRes.winner);
+      navigate('/Finish');
     });
     
     socket.on(SocketConst.EMIT.NEXT_PLAYER, async (dataRes) => {
@@ -394,6 +408,7 @@ function Game() {
     }else{
       sendPlayCard({ "card_play": { "number": v.number, "color": v.color, "special": v.special } });
     }
+    setIsSayUno(false);
   };
 
   function drawCard() {
@@ -511,36 +526,30 @@ function Game() {
         </div>
 
         <button onClick={()=>{setIsSayUno(!isSayUno)}}>say uno</button>
-        {/* <button onClick={() => onSpecialLogic()}>special logic {countSpecialLogic}</button> */}
-        {/* <p>My turn : {isMyTurn ? "true" : "false"}</p>
-        <p>say uno:{isSayUno ? "true" : "false"}</p>
-        <p>Count Down : {time}</p> */}
-        {challengeResult && <p>{challengeResult}</p>}
+        {challengeResult && <p style={{color:"red"}}>{challengeResult}</p>}
         {sayUnoPlayer && <div>
-          <p>{sayUnoPlayer}</p>
-          <button onClick={setSayUnoPlayer("")}>close</button>
+          <p style={{color:"red"}}>{sayUnoPlayer}</p>
         </div>}
         
         <div>
           {pointedNotSayUnoResult && <div>
-            <p>{pointedNotSayUnoResult}</p>
-            <button onClick={setPointedNotSayUnoResult("")}>close</button>
+            <p style={{color:"red"}}>{pointedNotSayUnoResult}</p>
           </div>}
         </div>
         {canPlayDrawCard && <div>
-          <p>Do you play the card you drew?</p>
+          <p style={{color:"red"}}>Do you play the card you drew?</p>
           <button onClick={()=>{whetherPlayDrawCard(true)}}>yes</button>
           <button onClick={()=>{whetherPlayDrawCard(false)}}>no</button>
         </div>}
         {canSelectColor && <div>
-          <p>Select color</p>
+          <p style={{color:"red"}}>Select color</p>
           <button onClick={()=>{selectColor(0)}}>red</button>
           <button onClick={()=>{selectColor(1)}}>yellow</button>
           <button onClick={()=>{selectColor(2)}}>gleen</button>
           <button onClick={()=>{selectColor(3)}}>blue</button>
         </div>}
         {isChallenge && <div>
-          <p>Do you challenge?</p>
+          <p style={{color:"red"}}>Do you challenge?</p>
           <button onClick={()=>{whetherChallenge(true)}}>yes</button>
           <button onClick={()=>{whetherChallenge(false)}}>no</button>
         </div>}
@@ -548,7 +557,7 @@ function Game() {
 
       <div className="player1 player-card">
         {myCards.map((v,i) => (
-          <div onClick={() => selectCard(v)} key={i} className={`card card-hover ${v.color || "black"}`}>
+          <div onClick={() => selectCard(v)} key={i} className={`card card-hover ${v.color || "black"}`} style={{marginLeft:"-30px",zIndex:i+1}}>
             <div className="ellipse">
               {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
               {v.special=="draw_2" && <div>
@@ -565,13 +574,13 @@ function Game() {
                 <p className={`special-${v.special}-3`}></p>
                 <p className={`special-${v.special}-4`}></p>
               </div>}
-              {v.special=="wild_draw_4" && <div>
+              {v.special=="wild_draw_4" && <div style={{height:'40px'}}>
                 <p className={`special-${v.special}-1 yellow`}></p>
                 <p className={`special-${v.special}-2 blue`}></p>
                 <p className={`special-${v.special}-3 red`}></p>
                 <p className={`special-${v.special}-4 green`}></p>
               </div>}
-              {v.special=="wild" && <div>
+              {v.special=="wild" && <div style={{height:'40px'}}>
                 <p className={`special-${v.special}-1 red`}></p>
                 <p className={`special-${v.special}-2 blue`}></p>
                 <p className={`special-${v.special}-3 yellow`}></p>
@@ -589,64 +598,70 @@ function Game() {
       </div>
 
       {Object.keys(playersCardList).map((key,i) => (
-        <div key={i} className={`player${i+2} `}>
+        <div className={`player${i+2} `}>
           <div style={{marginBottom:'10px'}}>
             <p style={{display:'inline',marginRight:'30px'}}>ID : {key}</p>
             <button style={{display:'inline-block'}} onClick={()=>{onPointedNotSayUno(key)}}>pointed not say uno</button>
           </div>
-          <div className={`player-card`}>
-            {playersCardList[key].map((v,i)=>{
-              console.log(playersCardList[key]);
-              if(v===-1){return <div key={i} className="card black" style={{marginBottom:"-30px",zIndex:i+1}}>
-                <div className="ellipse red">
-                  <p className="logo solid-shadow">uno</p>
-                </div>
+        <div key={i} className={`player-card`}>
+          {playersCardList[key].map((v,i)=>(
+            <div className="card black" style={{marginBottom:"-60px",marginLeft:"-30px",zIndex:i+1}}>
+              <div className="ellipse red">
+                <p className="logo solid-shadow">uno</p>
               </div>
-              }else{
-              return <div key={i} className={`card card-hover ${v.color || "black"}`}>
-                <div className="ellipse">
-                  {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
-                  {v.special=="draw_2" && <div>
-                    <p className={`special-${v.special}-1`}></p>
-                    <p className={`special-${v.special}-2`}></p>
-                  </div>}
-                  {v.special=="skip" && <div>
-                    <p className={`special-${v.special}-1`}></p>
-                    <p className={`special-${v.special}-2`}></p>
-                  </div>}
-                  {v.special=="reverse" && <div>
-                    <p className={`special-${v.special}-1`}></p>
-                    <p className={`special-${v.special}-2`}></p>
-                    <p className={`special-${v.special}-3`}></p>
-                    <p className={`special-${v.special}-4`}></p>
-                  </div>}
-                  {v.special=="wild_draw_4" && <div>
-                    <p className={`special-${v.special}-1 yellow`}></p>
-                    <p className={`special-${v.special}-2 blue`}></p>
-                    <p className={`special-${v.special}-3 red`}></p>
-                    <p className={`special-${v.special}-4 green`}></p>
-                  </div>}
-                  {v.special=="wild" && <div>
-                    <p className={`special-${v.special}-1 red`}></p>
-                    <p className={`special-${v.special}-2 blue`}></p>
-                    <p className={`special-${v.special}-3 yellow`}></p>
-                    <p className={`special-${v.special}-4 green`}></p>
-                  </div>}
-                  {v.special=="white_wild" && <div>
-                    <p className={`special-${v.special}`}></p>
-                  </div>}
-                  {v.special=="wild_shuffle" && <div>
-                    <p className={`special-${v.special} solid-shadow`}>shuffle</p>
-                  </div>}
-                </div>
-              </div>}
-              })}
-          </div>
+            </div>
+          ))}
+        </div>
         </div>
       ))}
-
+          
+      {Object.keys(displayPublicCard).length>0 && <div id="fullOverlay">
+        <h2 style={{color:"red"}}>Challenge Success!!</h2>
+        <div style={{color:"red"}}>Card of player {displayPublicCard.card_of_player}</div>
+        <div className="player-card">
+        {displayPublicCard.cards.map((v,i) => (
+            <div key={i} className={`card ${v.color || "black"}`}>
+              <div className="ellipse">
+                {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
+                {v.special=="draw_2" && <div>
+                  <p className={`special-${v.special}-1`}></p>
+                  <p className={`special-${v.special}-2`}></p>
+                </div>}
+                {v.special=="skip" && <div>
+                  <p className={`special-${v.special}-1`}></p>
+                  <p className={`special-${v.special}-2`}></p>
+                </div>}
+                {v.special=="reverse" && <div>
+                  <p className={`special-${v.special}-1`}></p>
+                  <p className={`special-${v.special}-2`}></p>
+                  <p className={`special-${v.special}-3`}></p>
+                  <p className={`special-${v.special}-4`}></p>
+                </div>}
+                {v.special=="wild_draw_4" && <div style={{height:'40px'}}>
+                  <p className={`special-${v.special}-1 yellow`}></p>
+                  <p className={`special-${v.special}-2 blue`}></p>
+                  <p className={`special-${v.special}-3 red`}></p>
+                  <p className={`special-${v.special}-4 green`}></p>
+                </div>}
+                {v.special=="wild" && <div style={{height:'40px'}}>
+                  <p className={`special-${v.special}-1 red`}></p>
+                  <p className={`special-${v.special}-2 blue`}></p>
+                  <p className={`special-${v.special}-3 yellow`}></p>
+                  <p className={`special-${v.special}-4 green`}></p>
+                </div>}
+                {v.special=="white_wild" && <div>
+                  <p className={`special-${v.special}`}></p>
+                </div>}
+                {v.special=="wild_shuffle" && <div>
+                  <p className={`special-${v.special} solid-shadow`}>shuffle</p>
+                </div>}
+              </div>
+            </div>
+          ))}
+          </div>
+      </div>}
     </div>
-  );
+  )
 }
 
 export default Game;

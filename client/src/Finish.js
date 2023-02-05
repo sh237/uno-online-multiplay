@@ -8,9 +8,19 @@ const Finish = () => {
     const context = useContext(GlobalContext);
     return (
         <div className="finish">
-            <h1>Winner</h1>
-            <p>{context.winner}</p>
-            <button onClick={()=>navigate('/')} className="btn">go to start page</button>
+            <h1>Ranking</h1>
+            {context.winner.rank.map((v) => (
+                <p key={v} className="player-in-room">{v}</p>
+            ))}
+            <button
+                onClick={()=>{
+                    navigate('/');
+                    context.setWinner("");
+                }}
+                className="btn"
+            >
+                go to start page
+            </button>
         </div>
     );
 }
