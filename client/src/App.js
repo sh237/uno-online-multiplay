@@ -1,10 +1,10 @@
 import './App.css';
-import Game from './Game.js'
-import Join from './Join.js'
-import Room from './Room.js'
-import Finish from './Finish.js'
+import Game from './Game.js';
+import Join from './Join.js';
+import Room from './Room.js';
+import Finish from './Finish.js';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Context from './Context.js'
+import Context from './Context.js';
 
 const App = () => {
   return (
