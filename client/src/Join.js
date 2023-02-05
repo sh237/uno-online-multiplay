@@ -33,7 +33,7 @@ const Join = () => {
         }
     }
     //デバッグ用
-    const myCards=[{color:"red",number:0},{color:"red",special:"draw_2"},{color:"blue",number:1},{color:"blue",special:"skip"},{color:"green",special:"reverse"},{special:"wild"},{color:"yellow",number:1},{color:"black",special:"wild_draw_4"}];//,{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},];
+    const myCards=[{color:"red",number:0},{color:"red",special:"draw_2"}]//,{color:"blue",number:1},{color:"blue",special:"skip"},{color:"green",special:"reverse"},{special:"wild"},{color:"yellow",number:1},{color:"black",special:"wild_draw_4"},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},{color:"red",number:1},];
     function selectCard(v){
         console.log(v);
     };
@@ -64,7 +64,7 @@ const Join = () => {
                 </button>
             </div>
             {/*デバッグ用 */}
-            <div className="player1 player-card">
+            {/* <div className="player1 player-card">
                 {myCards.map((v,i) => (
                     <div onClick={() => selectCard(v)} key={i} className={`card card-hover ${v.color}`}>
                         <div className="ellipse">
@@ -104,11 +104,11 @@ const Join = () => {
                         </div>
                     </div>
                 ))}
-            </div>
+            </div> */}
 
             {/* <div className="player2 player-card">
                 {myCards.map((v,i) => (
-                    <div className="card black">
+                    <div className="card black" style={{marginBottom:"-50px",zIndex:i+1}}>
                         <div className="ellipse red">
                             <p className="logo solid-shadow">uno</p>
                         </div>
@@ -118,7 +118,7 @@ const Join = () => {
 
             <div className="player3 player-card">
                 {myCards.map((v,i) => (
-                    <div className="card black">
+                    <div className="card black" style={{marginBottom:"-50px",zIndex:i+1}}>
                         <div className="ellipse red">
                             <p className="logo solid-shadow">uno</p>
                         </div>
@@ -128,7 +128,7 @@ const Join = () => {
 
             <div className="player4 player-card">
                 {myCards.map((v,i) => (
-                    <div className="card black">
+                    <div className="card black" style={{marginBottom:"-50px",zIndex:i+1}}>
                         <div className="ellipse red">
                             <p className="logo solid-shadow">uno</p>
                         </div>

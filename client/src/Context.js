@@ -10,13 +10,17 @@ const Context = (props) => {
     const [roomId, setRoomId] = useState("");
     const [socket, setSocket] = useState();
     const [playerId, setPlayerId] = useState("");
+    const [winner, setWinner] = useState("");
+
     const value = {
         playerName,
         setPlayerName,
         roomId,
         setRoomId,
         playerId,
-        setPlayerId
+        setPlayerId,
+        winner,
+        setWinner
     }
     useEffect(() => {
         const socket_ = io(`http://localhost:${port}`);
