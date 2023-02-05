@@ -70,6 +70,7 @@ function Game() {
   const [countSpecialLogic,setCountSpecialLogic] = useState(10);
   const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
   const [time, setTime] = useState(10);
+  const [challengeResult, setChallengeResult] = useState("");
   const refTime = useRef(time);
   const refIsMyTurn = useRef(isMyTurn);
   useEffect(() => {
@@ -89,7 +90,6 @@ function Game() {
     if (!err) {
       return;
     }
-
     console.log(`${event} event failed!`);
     console.log(err);
   }
@@ -109,9 +109,9 @@ function Game() {
       }
       const playersCardList_={}
       playOrder.forEach((v) => {
-        playersCardList_[v]=[0,0,0,0,0,0,0];
+        if(v!=context.playerId);
+        playersCardList_[v]=[-1,-1,-1,-1,-1,-1,-1];
       });
-      console.log(playersCardList_)
       setPlayersCardList(playersCardList_);
     });
 
@@ -119,8 +119,11 @@ function Game() {
       console.log("NOTIFY_CARD",dataRes);
       setPlayersCardList((prevState) => {
         Object.keys(dataRes.cards).forEach((id)=>{
-          prevState[id]=Array(dataRes.cards[id])
+          if(id!=context.playerId){
+            prevState[id]=[...Array(dataRes.cards[id])].map(() => -1);
+          }
         })
+        delete prevState[context.playerId];
         return prevState;
       });
       setFieldCard(dataRes.current_field);
@@ -222,17 +225,26 @@ function Game() {
       if (dataRes.is_challenge) {
         if (dataRes.is_challenge_success) {
           console.log(`${dataRes.challenger} challenge successfully!`);
+          setChallengeResult(`${dataRes.challenger} challenge successfully!`);
         } else {
           console.log(`${dataRes.challenger} challenge failed!`);
+          setChallengeResult(`${dataRes.challenger} challenge failed!`);
         }
       } else {
         console.log(`${dataRes.challenger} no challenge.`);
+        setChallengeResult(`${dataRes.challenger} no challenge.`);
       }
+      setTimeout(()=>{
+        setChallengeResult("");
+      },5000);
     });
     
     socket.on(SocketConst.EMIT.PUBLIC_CARD, (dataRes) => {
       console.log(`Public card of player ${dataRes.card_of_player}.`);
       console.log(dataRes.cards);
+      setPlayersCardList((prevState) => {
+        return { ...prevState, [dataRes.card_of_player]: dataRes.cards};
+      });
     });
     
     socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD, (dataRes) => {
@@ -432,17 +444,15 @@ function Game() {
     const timerId = setInterval(()=>{
       if(refTime.current==0){
         setIsMyTurn(false);
+        console.log("EMIT.TIME_OUT");
         socket.emit(SocketConst.EMIT.TIME_OUT , {}, (err) => {
           handleError(SocketConst.EMIT.TIME_OUT, err);
         });
         clearInterval(timerId);
-        console.log("clear out");
       }else if(!refIsMyTurn.current){
         clearInterval(timerId);
-        console.log("clear turn");
       }else{
         setTime(refTime.current-1)
-        console.log(refTime.current)
       }
     },1000);
   }
@@ -505,6 +515,7 @@ function Game() {
         {/* <p>My turn : {isMyTurn ? "true" : "false"}</p>
         <p>say uno:{isSayUno ? "true" : "false"}</p>
         <p>Count Down : {time}</p> */}
+        {challengeResult && <p>{challengeResult}</p>}
         {sayUnoPlayer && <div>
           <p>{sayUnoPlayer}</p>
           <button onClick={setSayUnoPlayer("")}>close</button>
@@ -578,20 +589,59 @@ function Game() {
       </div>
 
       {Object.keys(playersCardList).map((key,i) => (
-        <div className={`player${i+2} `}>
+        <div key={i} className={`player${i+2} `}>
           <div style={{marginBottom:'10px'}}>
             <p style={{display:'inline',marginRight:'30px'}}>ID : {key}</p>
             <button style={{display:'inline-block'}} onClick={()=>{onPointedNotSayUno(key)}}>pointed not say uno</button>
           </div>
-        <div key={i} className={`player-card`}>
-          {playersCardList[key].map((v,i)=>(
-            <div className="card black" style={{marginBottom:"-30px",zIndex:i+1}}>
-              <div className="ellipse red">
-                <p className="logo solid-shadow">uno</p>
+          <div className={`player-card`}>
+            {playersCardList[key].map((v,i)=>{
+              console.log(playersCardList[key]);
+              if(v===-1){return <div key={i} className="card black" style={{marginBottom:"-30px",zIndex:i+1}}>
+                <div className="ellipse red">
+                  <p className="logo solid-shadow">uno</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+              }else{
+              return <div key={i} className={`card card-hover ${v.color || "black"}`}>
+                <div className="ellipse">
+                  {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
+                  {v.special=="draw_2" && <div>
+                    <p className={`special-${v.special}-1`}></p>
+                    <p className={`special-${v.special}-2`}></p>
+                  </div>}
+                  {v.special=="skip" && <div>
+                    <p className={`special-${v.special}-1`}></p>
+                    <p className={`special-${v.special}-2`}></p>
+                  </div>}
+                  {v.special=="reverse" && <div>
+                    <p className={`special-${v.special}-1`}></p>
+                    <p className={`special-${v.special}-2`}></p>
+                    <p className={`special-${v.special}-3`}></p>
+                    <p className={`special-${v.special}-4`}></p>
+                  </div>}
+                  {v.special=="wild_draw_4" && <div>
+                    <p className={`special-${v.special}-1 yellow`}></p>
+                    <p className={`special-${v.special}-2 blue`}></p>
+                    <p className={`special-${v.special}-3 red`}></p>
+                    <p className={`special-${v.special}-4 green`}></p>
+                  </div>}
+                  {v.special=="wild" && <div>
+                    <p className={`special-${v.special}-1 red`}></p>
+                    <p className={`special-${v.special}-2 blue`}></p>
+                    <p className={`special-${v.special}-3 yellow`}></p>
+                    <p className={`special-${v.special}-4 green`}></p>
+                  </div>}
+                  {v.special=="white_wild" && <div>
+                    <p className={`special-${v.special}`}></p>
+                  </div>}
+                  {v.special=="wild_shuffle" && <div>
+                    <p className={`special-${v.special} solid-shadow`}>shuffle</p>
+                  </div>}
+                </div>
+              </div>}
+              })}
+          </div>
         </div>
       ))}
 
