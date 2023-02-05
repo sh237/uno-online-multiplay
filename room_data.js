@@ -13,6 +13,7 @@ const RoomSchema = mongoose.Schema({
     number_turn_play:Number,//何ターン目か(仕様書に書いてあった)
     number_card_play:Number,//何枚場に出たか(仕様書に書いてあった)
     uno_declared:[String],//uno宣言したプレイヤーのid
+    winners: [String],//勝者のid(1位から順に)
     is_draw4_last_played: Boolean,//draw4が最後に出されたかどうか
     is_draw2_last_played: Boolean,//draw2が最後に出されたかどうか
     previous_field:{color:String,special:String,number:Number},//前の場のカード(CHALLENGE用)

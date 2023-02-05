@@ -1,7 +1,6 @@
 const Room = require('../room_data');
 const { session } = require('../app');
 const { SocketConst, Special, DrawReason, runTransaction, shuffle } = require('./socket-io-common');
-const { notify } = require('../routes');
 
 module.exports = (io) => {
   io.on('connection', socket => {
@@ -51,52 +50,37 @@ module.exports = (io) => {
 
     const getPreviousPlayer = (room) => {
       if(room.is_reverse){
-        if(room.current_player == 3){
-          return room.players_info.find((player) => player._id == room.order[0]);
-        }else{
-          return room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
-        }
+        return room.players_info.find((player) => player._id == room.order[(room.current_player + 1) % room.players_info.length]);
       }else{
-        if(room.current_player == 0){
-          return room.players_info.find((player) => player._id == room.order[3]);
-        }else{
-          return room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
-        }
+        return room.players_info.find((player) => player._id == room.order[(room.current_player - 1 + room.players_info.length) % room.players_info.length]);
       }
     }
 
     const getNextPlayer = (room) => {
       if(room.is_reverse){
-        if(room.current_player == 0){
-          return room.players_info.find((player) => player._id == room.order[3]);
-        }else{
-          return room.players_info.find((player) => player._id == room.order[room.current_player - 1]);
-        }
+        return room.players_info.find((player) => player._id == room.order[(room.current_player - 1 + room.players_info.length ) % room.players_info.length]);
       }else{
-        if(room.current_player == 3){
-          return room.players_info.find((player) => player._id == room.order[0]);
-        }else{
-          return room.players_info.find((player) => player._id == room.order[room.current_player + 1]);
-        }
+        return room.players_info.find((player) => player._id == room.order[(room.current_player + 1) % room.players_info.length]);
       }
     }
 
     const updateCurrentPlayer = (room) => {
       //current_playerを変更する
       if(room.is_reverse){
-        if(room.current_player == 0){
-          room.current_player = 3;
-        }else{
-          room.current_player = room.current_player - 1;
-        }
+        room.current_player = (room.current_player - 1 + room.players_info.length) % room.players_info.length;
       }else{
-        if(room.current_player == 3){
-          room.current_player = 0;
-        }else{
-          room.current_player = room.current_player + 1;
-        }
+        room.current_player = (room.current_player + 1) % room.players_info.length;
       }
     };
+
+    const updateCurrentPlayerForSkip = (room) => {
+      //次のプレイヤーをスキップする
+      if(room.is_reverse){
+        room.current_player = (room.current_player - 2 + room.players_info.length) % room.players_info.length;
+      }else{
+        room.current_player = (room.current_player + 2) % room.players_info.length;
+      }
+    }
 
     const waitForChangeColor = (room, player, reason, session) => {
       return new Promise((resolve, reject) => {
@@ -153,35 +137,9 @@ module.exports = (io) => {
       return player.player_name;
     }
 
-    const updateCurrentPlayerForSkip = (room) => {
-      //次のプレイヤーをスキップする
-      if(room.is_reverse){
-        if(room.current_player == 0){
-          room.current_player = 2;
-        }else if(room.current_player == 1){
-          room.current_player = 3;
-        }else{
-          room.current_player = room.current_player - 2;
-        }
-      }else{
-        if(room.current_player == 2){
-          room.current_player = 0;
-        }else if(room.current_player == 3){
-          room.current_player = 1;
-        }else{
-          room.current_player = room.current_player + 2;
-        }
-      }
-    }
-
     const insideEmitNextPlayer = async(room, player, reason, session) => {
       let bindCheckedRes = checkAndRemoveBindedPlayers(room, getNextPlayer(room));
-      if(bindCheckedRes == 0){
-        player = getNextPlayer(room);
-        //次のプレイヤーをスキップする
-        updateCurrentPlayerForSkip(room);
-      }else if(bindCheckedRes == 1){
-        player = getNextPlayer(room);
+      if(bindCheckedRes == 0 || bindCheckedRes == 1){
         //次のプレイヤーをスキップする
         updateCurrentPlayerForSkip(room);
       }else{
@@ -195,6 +153,7 @@ module.exports = (io) => {
       //next_playerイベントを発火させるための処理
       let next_next_player = getNextPlayer(room);
       let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+      console.log("next_next_player: "+ next_next_player.player_name + " next_player: " + next_player.player_name);
       let number_card_of_player = {};
       room.players_info.forEach((player) => {
         number_card_of_player[player._id] = player.cards.length;
@@ -235,7 +194,7 @@ module.exports = (io) => {
         number_card_of_player[player._id] = player.cards.length;
       });
       io.sockets.in(room.room_name).emit(SocketConst.EMIT.NOTIFY_CARD, {cards:number_card_of_player, current_field:room.current_field});
-      console.log("EVENT EMIT (" + player.player_name +"): NOTIFY_CARD to room");
+      console.log("EVENT EMIT (" + player.player_name +"): NOTIFY_CARD to room " + JSON.stringify(number_card_of_player));
     }
 
     const drawCard = async(socket, session) => {
@@ -455,6 +414,19 @@ module.exports = (io) => {
 
           //プレイヤーのカードが0枚になった場合
           if(player.cards.length == 0){
+            room.winners.push(player._id);
+            //room.players_infoからplayerを削除
+            room.players_info.splice(room.players_info.findIndex((p) => {
+              return p._id == player._id;
+            }),1);
+            //room.orderからplayer._idを削除
+            room.order.splice(room.order.find((id) => {
+              return id == player._id;
+            }),1);
+            if(room.players_info.length == 0){
+              io.sockets.in(room.room_name).emit(SocketConst.EMIT.FINISH_TURN, {turn_no:room.number_turn_play, winner:player._id, score:scores});
+              console.log("EVENT EMIT(" + player.player_name + "): FINISH_TURN to room.");
+            }
             let temp_scores = {};
             let scores = {};
             for(let i = 0; i < room.players_info.length; i ++){
@@ -478,9 +450,15 @@ module.exports = (io) => {
                 scores[room.players_info[i]._id] -= temp_scores[room.players_info[i]._id];
               }
             }
-            io.sockets.in(room.room_name).emit(SocketConst.EMIT.FINISH_TURN, {turn_no:room.number_turn_play, winner:player._id, score:scores});
-            console.log("EVENT EMIT(" + player.player_name + "): FINISH_TURN to room.");
           }
+
+          //全プレイヤーに全プレイヤーの手札の枚数を通知する。
+          let number_card_of_player = {};
+          room.players_info.forEach((player) => {
+            number_card_of_player[player._id] = player.cards.length;
+          });
+          io.sockets.in(room.room_name).emit(SocketConst.EMIT.NOTIFY_CARD, {cards:number_card_of_player, current_field:room.current_field});
+          console.log("EVENT EMIT (" + player.player_name +"): NOTIFY_CARD to room " + JSON.stringify(number_card_of_player));
 
           //カードを場に出したことをクライアントに通知する
           if (socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_CARD || socketEvent == SocketConst.EMIT.SAY_UNO_AND_PLAY_DRAW_CARD){
