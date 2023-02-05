@@ -46,7 +46,7 @@ const Room = () => {
                 players_.push(v.player_name);
             })
             setPlayers(players_);
-            //console.log("currentplayer",players_);
+            console.log("currentplayer",players_);
         });
 
         //サーバーからゲームの開始を受信

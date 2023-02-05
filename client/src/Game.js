@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useContext } from 'react';
 import { GlobalContext, SocketContext } from './Context.js';
+import { useNavigate } from "react-router-dom";
 
 function Game() {
   const context = useContext(GlobalContext);
   const socket = useContext(SocketContext);
+  const navigate = useNavigate();
   const SocketConst = {
     EMIT: {
-      //JOIN_ROOM: 'join-room',
       RECEIVER_CARD: 'receiver-card',
       FIRST_PLAYER: 'first-player',
       COLOR_OF_WILD: 'color-of-wild',
@@ -24,6 +25,8 @@ function Game() {
       SPECIAL_LOGIC: 'special-logic',
       FINISH_TURN: 'finish-turn',
       FINISH_GAME: 'finish-game',
+      NOTIFY_CARD: 'notify-card',
+      TIME_OUT: 'time-out',
     },
   };
   const Special = {
@@ -65,8 +68,16 @@ function Game() {
   const [pointedNotSayUnoResult,setPointedNotSayUnoResult] = useState("");
   const [sayUnoPlayer,setSayUnoPlayer] = useState("");
   const [countSpecialLogic,setCountSpecialLogic] = useState(10);
-  const [winner, setWinner] = useState("");
   const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
+  const [time, setTime] = useState(10);
+  const refTime = useRef(time);
+  const refIsMyTurn = useRef(isMyTurn);
+  useEffect(() => {
+    refTime.current = time;
+  }, [time]);
+  useEffect(() => {
+    refIsMyTurn.current = isMyTurn;
+  }, [isMyTurn]);
 
   /**
   * 共通エラー処理
@@ -102,6 +113,21 @@ function Game() {
       });
       console.log(playersCardList_)
       setPlayersCardList(playersCardList_);
+    });
+
+    socket.on(SocketConst.EMIT.NOTIFY_CARD,(dataRes)=>{
+      console.log("NOTIFY_CARD",dataRes);
+      setPlayersCardList((prevState) => {
+        Object.keys(dataRes.cards).forEach((id)=>{
+          prevState[id]=Array(dataRes.cards[id])
+        })
+        return prevState;
+      });
+      setFieldCard(dataRes.current_field);
+    });
+
+    socket.on(SocketConst.EMIT.TIME_OUT,(dataRes)=>{
+
     });
 
     //サーバーからカードを受け取る
@@ -144,14 +170,13 @@ function Game() {
             return prevState;
           }
         });
-      }else if (dataRes.player !== context.playerId && dataRes.card_play){
-        setPlayersCardList((prevState) => {
-          const arr = prevState[dataRes.player];
-          arr.shift();
-          console.log(arr);
-          return { ...prevState, [dataRes.player]: arr };
-        });
-      }
+      }// }else if (dataRes.player !== context.playerId && dataRes.card_play){
+      //   setPlayersCardList((prevState) => {
+      //     const arr = prevState[dataRes.player];
+      //     arr.shift();
+      //     return { ...prevState, [dataRes.player]: arr };
+      //   });
+      // }
     });
     
     socket.on(SocketConst.EMIT.DRAW_CARD, (dataRes) => {
@@ -159,13 +184,13 @@ function Game() {
       if(dataRes.player===context.playerId && dataRes.can_play_draw_card){
           //はいかいいえの応答をユーザーから受け付ける処理
           setCanPlayDrawCard(true);
-      }else if(dataRes.player!==context.playerId && dataRes.is_draw){
-        setPlayersCardList((prevState) => {
-          const arr = prevState[dataRes.player];
-          arr.push(0);
-          return { ...prevState, [dataRes.player]: arr };
-        });
-      }
+      }// }else if(dataRes.player!==context.playerId && dataRes.is_draw){
+      //   setPlayersCardList((prevState) => {
+      //     const arr = prevState[dataRes.player];
+      //     arr.push(0);
+      //     return { ...prevState, [dataRes.player]: arr };
+      //   });
+      // }
     });
     
     socket.on(SocketConst.EMIT.PLAY_DRAW_CARD, (dataRes) => {
@@ -184,14 +209,13 @@ function Game() {
             return prevState;
           }
         });
-      }else if (dataRes.player !== context.playerId && dataRes.card_play){
-        setPlayersCardList((prevState) => {
-          const arr = prevState[dataRes.player];
-          arr.shift();
-          console.log(arr);
-          return { ...prevState, [dataRes.player]: arr };
-        });
-      }
+      }// }else if (dataRes.player !== context.playerId && dataRes.card_play){
+      //   setPlayersCardList((prevState) => {
+      //     const arr = prevState[dataRes.player];
+      //     arr.shift();
+      //     return { ...prevState, [dataRes.player]: arr };
+      //   });
+      // }
     });
     
     socket.on(SocketConst.EMIT.CHALLENGE, (dataRes) => {
@@ -232,7 +256,8 @@ function Game() {
     });
     
     socket.on(SocketConst.EMIT.FINISH_TURN, (dataRes) => {
-      setWinner(dataRes.winner);
+      context.setWinner(dataRes.winner);
+      navigate('/Finish');
     });
     
     socket.on(SocketConst.EMIT.FINISH_GAME, (dataRes) => {
@@ -251,8 +276,8 @@ function Game() {
         }
       }else{
         setIsMyTurn(true);
+        timer();
       }
-      //setPlayersCardList(dataRes.number_card_of_player);
       setFieldCard(dataRes.card_before);
     });
     return () => {
@@ -401,6 +426,27 @@ function Game() {
     setIsChallenge(false);
   }
 
+  function timer(){
+    console.log("timer start");
+    setTime(10);
+    const timerId = setInterval(()=>{
+      if(refTime.current==0){
+        setIsMyTurn(false);
+        socket.emit(SocketConst.EMIT.TIME_OUT , {}, (err) => {
+          handleError(SocketConst.EMIT.TIME_OUT, err);
+        });
+        clearInterval(timerId);
+        console.log("clear out");
+      }else if(!refIsMyTurn.current){
+        clearInterval(timerId);
+        console.log("clear turn");
+      }else{
+        setTime(refTime.current-1)
+        console.log(refTime.current)
+      }
+    },1000);
+  }
+
   return (
     <div className="game">
       <div className="field" style={{zIndex:"10"}}>
@@ -447,12 +493,18 @@ function Game() {
               </div>}
             </div>
           </div>
+          <div>
+            <p style={{marginTop:"0"}}>My turn : {isMyTurn ? "true" : "false"}</p>
+            <p style={{marginTop:"0"}}>say uno:{isSayUno ? "true" : "false"}</p>
+            <p style={{marginTop:"0",color:'red'}}>Count Down : {time}</p>
+          </div>
         </div>
 
         <button onClick={()=>{setIsSayUno(!isSayUno)}}>say uno</button>
-        <button onClick={() => onSpecialLogic()}>special logic {countSpecialLogic}</button>
-        <p>My turn : {isMyTurn ? "true" : "false"}</p>
+        {/* <button onClick={() => onSpecialLogic()}>special logic {countSpecialLogic}</button> */}
+        {/* <p>My turn : {isMyTurn ? "true" : "false"}</p>
         <p>say uno:{isSayUno ? "true" : "false"}</p>
+        <p>Count Down : {time}</p> */}
         {sayUnoPlayer && <div>
           <p>{sayUnoPlayer}</p>
           <button onClick={setSayUnoPlayer("")}>close</button>
@@ -484,56 +536,56 @@ function Game() {
       </div>
 
       <div className="player1 player-card">
-                {myCards.map((v,i) => (
-                  <div onClick={() => selectCard(v)} key={i} className={`card card-hover ${v.color}`}>
-                    <div className="ellipse">
-                      {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
-                      {v.special=="draw_2" && <div>
-                        <p className={`special-${v.special}-1`}></p>
-                        <p className={`special-${v.special}-2`}></p>
-                      </div>}
-                      {v.special=="skip" && <div>
-                        <p className={`special-${v.special}-1`}></p>
-                        <p className={`special-${v.special}-2`}></p>
-                      </div>}
-                      {v.special=="reverse" && <div>
-                        <p className={`special-${v.special}-1`}></p>
-                        <p className={`special-${v.special}-2`}></p>
-                        <p className={`special-${v.special}-3`}></p>
-                        <p className={`special-${v.special}-4`}></p>
-                      </div>}
-                      {v.special=="wild_draw_4" && <div>
-                        <p className={`special-${v.special}-1 yellow`}></p>
-                        <p className={`special-${v.special}-2 blue`}></p>
-                        <p className={`special-${v.special}-3 red`}></p>
-                        <p className={`special-${v.special}-4 green`}></p>
-                      </div>}
-                      {v.special=="wild" && <div>
-                        <p className={`special-${v.special}-1 red`}></p>
-                        <p className={`special-${v.special}-2 blue`}></p>
-                        <p className={`special-${v.special}-3 yellow`}></p>
-                        <p className={`special-${v.special}-4 green`}></p>
-                      </div>}
-                      {v.special=="white_wild" && <div>
-                        <p className={`special-${v.special}`}></p>
-                      </div>}
-                      {v.special=="wild_shuffle" && <div>
-                        <p className={`special-${v.special} solid-shadow`}>shuffle</p>
-                      </div>}
-                    </div>
-                  </div>
-                ))}
+        {myCards.map((v,i) => (
+          <div onClick={() => selectCard(v)} key={i} className={`card card-hover ${v.color || "black"}`}>
+            <div className="ellipse">
+              {(v.number || v.number==0) && <p className="number solid-shadow">{v.number}</p>}
+              {v.special=="draw_2" && <div>
+                <p className={`special-${v.special}-1`}></p>
+                <p className={`special-${v.special}-2`}></p>
+              </div>}
+              {v.special=="skip" && <div>
+                <p className={`special-${v.special}-1`}></p>
+                <p className={`special-${v.special}-2`}></p>
+              </div>}
+              {v.special=="reverse" && <div>
+                <p className={`special-${v.special}-1`}></p>
+                <p className={`special-${v.special}-2`}></p>
+                <p className={`special-${v.special}-3`}></p>
+                <p className={`special-${v.special}-4`}></p>
+              </div>}
+              {v.special=="wild_draw_4" && <div>
+                <p className={`special-${v.special}-1 yellow`}></p>
+                <p className={`special-${v.special}-2 blue`}></p>
+                <p className={`special-${v.special}-3 red`}></p>
+                <p className={`special-${v.special}-4 green`}></p>
+              </div>}
+              {v.special=="wild" && <div>
+                <p className={`special-${v.special}-1 red`}></p>
+                <p className={`special-${v.special}-2 blue`}></p>
+                <p className={`special-${v.special}-3 yellow`}></p>
+                <p className={`special-${v.special}-4 green`}></p>
+              </div>}
+              {v.special=="white_wild" && <div>
+                <p className={`special-${v.special}`}></p>
+              </div>}
+              {v.special=="wild_shuffle" && <div>
+                <p className={`special-${v.special} solid-shadow`}>shuffle</p>
+              </div>}
             </div>
+          </div>
+        ))}
+      </div>
 
       {Object.keys(playersCardList).map((key,i) => (
         <div className={`player${i+2} `}>
-          <div>
-            <p>ID : {key}</p>
+          <div style={{marginBottom:'10px'}}>
+            <p style={{display:'inline',marginRight:'30px'}}>ID : {key}</p>
             <button style={{display:'inline-block'}} onClick={()=>{onPointedNotSayUno(key)}}>pointed not say uno</button>
           </div>
         <div key={i} className={`player-card`}>
           {playersCardList[key].map((v,i)=>(
-            <div className="card black">
+            <div className="card black" style={{marginBottom:"-30px",zIndex:i+1}}>
               <div className="ellipse red">
                 <p className="logo solid-shadow">uno</p>
               </div>
