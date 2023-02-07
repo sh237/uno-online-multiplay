@@ -543,7 +543,7 @@ module.exports = (io) => {
               //ゲーム終了
               room.winners.push(room.players_info[0]._id);
               
-              io.sockets.in(room.room_name).emit(SocketConst.EMIT.FINISH_GAME, {rank:room.winners});
+              io.sockets.in(room.room_name).emit(SocketConst.EMIT.FINISH_GAME, {winner:{rank:room.winners}});
               console.log("EVENT EMIT(" + player.player_name + "): FINISH_GAME to room.");
 
               return;
