@@ -237,7 +237,7 @@ function Game() {
       }
       setTimeout(()=>{
         setChallengeResult("");
-      },5000);
+      },10000);
     });
     
     socket.on(SocketConst.EMIT.PUBLIC_CARD, (dataRes) => {
@@ -293,7 +293,7 @@ function Game() {
     
     socket.on(SocketConst.EMIT.NEXT_PLAYER, async (dataRes) => {
       console.log("on:NEXT_PLAYER",dataRes);
-      //setFieldCard(dataRes.card_before);
+      setMyCards(dataRes.card_of_player);
       if(dataRes.must_call_draw_card){
         if(dataRes.draw_reason==DrawReason.WILD_DRAW_4){
           setIsChallenge(true);
@@ -457,17 +457,22 @@ function Game() {
     console.log("timer start");
     setTime(10);
     const timerId = setInterval(()=>{
-      if(refTime.current==0){
+      if(refTime.current===-1){
         setIsMyTurn(false);
         console.log("EMIT.TIME_OUT");
         socket.emit(SocketConst.EMIT.TIME_OUT , {}, (err) => {
           handleError(SocketConst.EMIT.TIME_OUT, err);
         });
         clearInterval(timerId);
+        setTime(10);
       }else if(!refIsMyTurn.current){
         clearInterval(timerId);
+        setTime(10);
+      }else if(refTime.current===0){
+        setIsMyTurn(false);
+        setTime(refTime.current-1);
       }else{
-        setTime(refTime.current-1)
+        setTime(refTime.current-1);
       }
     },1000);
   }
@@ -521,7 +526,7 @@ function Game() {
           <div>
             <p style={{marginTop:"0"}}>My turn : {isMyTurn ? "true" : "false"}</p>
             <p style={{marginTop:"0"}}>say uno:{isSayUno ? "true" : "false"}</p>
-            <p style={{marginTop:"0",color:'red'}}>Count Down : {time}</p>
+            <p style={{marginTop:"0",color:'red'}}>Count Down : {time!==-1 ? time : 0}</p>
           </div>
         </div>
 
@@ -616,8 +621,7 @@ function Game() {
       ))}
           
       {Object.keys(displayPublicCard).length>0 && <div id="fullOverlay">
-        <h2 style={{color:"red"}}>Challenge Success!!</h2>
-        <div style={{color:"red"}}>Card of player {displayPublicCard.card_of_player}</div>
+        <h2 style={{color:"red"}}>Card of player {displayPublicCard.card_of_player}</h2>
         <div className="player-card">
         {displayPublicCard.cards.map((v,i) => (
             <div key={i} className={`card ${v.color || "black"}`}>
