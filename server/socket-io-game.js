@@ -98,6 +98,18 @@ module.exports = (io) => {
           console.log("socket._events: "+JSON.stringify(socket._events));
           //もしsocket.onでCOLOR_OF_WILDが登録されていたら
           room.current_field.color = data.color_of_wild;
+          //全プレイヤーに全プレイヤーの手札の枚数を通知する。
+          let number_card_of_player = {};
+          room.players_info.forEach((player) => {
+            number_card_of_player[player._id] = player.cards.length;
+          });
+          if(room.winners.length > 0){
+            room.winners.forEach((winner) => {
+              number_card_of_player[winner] = 0;
+            });
+          }
+          io.sockets.in(room.room_name).emit(SocketConst.EMIT.NOTIFY_CARD, {cards:number_card_of_player, current_field:room.current_field});
+          console.log("EVENT EMIT (" + player.player_name +"): NOTIFY_CARD to room " + JSON.stringify(number_card_of_player));
           //next_playerイベントを発火させるための処理
           emitNextPlayer(room, player, reason, socket, session);
           resolve(data);
