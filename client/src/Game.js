@@ -167,7 +167,7 @@ function Game() {
             return card.color == dataRes.card_play.color && card.special == dataRes.card_play.special && card.number == dataRes.card_play.number;
           });
           if(index!==-1){
-            const arr = [...prevState]; 
+            const arr = [...prevState];
             arr.splice(index, 1);
             return arr;
           }else{
@@ -224,6 +224,7 @@ function Game() {
     
     socket.on(SocketConst.EMIT.CHALLENGE, (dataRes) => {
       if (dataRes.is_challenge) {
+        // setChallengeResult(dataRes);
         if (dataRes.is_challenge_success) {
           console.log(`${dataRes.challenger} challenge successfully!`);
           setChallengeResult(`${dataRes.challenger} challenge successfully!`);
@@ -237,7 +238,7 @@ function Game() {
       }
       setTimeout(()=>{
         setChallengeResult("");
-      },5000);
+      },10000);
     });
     
     socket.on(SocketConst.EMIT.PUBLIC_CARD, (dataRes) => {
@@ -293,7 +294,7 @@ function Game() {
     
     socket.on(SocketConst.EMIT.NEXT_PLAYER, async (dataRes) => {
       console.log("on:NEXT_PLAYER",dataRes);
-      //setFieldCard(dataRes.card_before);
+      setMyCards(dataRes.card_of_player);
       if(dataRes.must_call_draw_card){
         if(dataRes.draw_reason==DrawReason.WILD_DRAW_4){
           setIsChallenge(true);
@@ -616,8 +617,7 @@ function Game() {
       ))}
           
       {Object.keys(displayPublicCard).length>0 && <div id="fullOverlay">
-        <h2 style={{color:"red"}}>Challenge Success!!</h2>
-        <div style={{color:"red"}}>Card of player {displayPublicCard.card_of_player}</div>
+        <h2 style={{color:"red"}}>Card of player {displayPublicCard.card_of_player}</h2>
         <div className="player-card">
         {displayPublicCard.cards.map((v,i) => (
             <div key={i} className={`card ${v.color || "black"}`}>
