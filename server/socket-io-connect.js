@@ -229,7 +229,7 @@ module.exports = (io) => {
     for(let c=0; c<4; c++){
       let color = "";
       switch(c){
-        case 0:
+        case 0:10
           color = Color.RED;
           break;
         case 1:

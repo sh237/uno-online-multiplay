@@ -82,7 +82,7 @@ module.exports = (io) => {
       }
     }
 
-    const waitForChangeColor = (room, player, reason, session) => {
+    const waitForChangeColor = async(room, player, reason, session) => {
       return new Promise((resolve, reject) => {
         let TIMEOUT = 3000000;
         const timeoutId = setTimeout(() => {
@@ -90,7 +90,7 @@ module.exports = (io) => {
         }, TIMEOUT);
     
         socket.on(SocketConst.EMIT.COLOR_OF_WILD, async(data) => {
-          console.log("EVENT ON   (" + player.player_name + "): COLOR_OF_WILD");
+          console.log("EVENT ON   (" + player.player_name + "): COLOR_OF_WILD color : " + data.color_of_wild);
           clearTimeout(timeoutId);
           room.current_field.color = data.color_of_wild;
           //next_playerイベントを発火させるための処理
@@ -145,7 +145,10 @@ module.exports = (io) => {
       }else{
         if(reason == "skip"){
           updateCurrentPlayerForSkip(room);
-        }else{
+        }else if(reason == "winner" || reason == "winner-draw"){
+          //何もしない
+        }
+        else{
           updateCurrentPlayer(room);
         }
       }
@@ -153,21 +156,31 @@ module.exports = (io) => {
       //next_playerイベントを発火させるための処理
       let next_next_player = getNextPlayer(room);
       let next_player = room.players_info.find((player) => { return player._id == room.order[room.current_player]; });
+      if(reason == "winner" || reason == "winner-draw"){
+        console.log("current_player: " + room.current_player);
+        next_next_player = getNextPlayer(room);
+        next_player = player;
+        player = getPreviousPlayer(room);
+        console.log("next_next_player: "+ JSON.stringify(next_next_player) + " next_player: " + JSON.stringify(next_player)+ " player: " + JSON.stringify(player));
+      }
       console.log("next_next_player: "+ next_next_player.player_name + " next_player: " + next_player.player_name);
       let number_card_of_player = {};
       room.players_info.forEach((player) => {
         number_card_of_player[player._id] = player.cards.length;
       });
+      if(room.winners.length > 0){
+        room.winners.forEach((winner) => {
+          number_card_of_player[winner] = 0;
+        });
+      }
       room.number_turn_play++;
-      let is_must_call_draw_card = (reason == DrawReason.DRAW_2 || reason == DrawReason.WILD_DRAW_4) ? true : false;
+      let is_must_call_draw_card = (reason == DrawReason.DRAW_2 || reason == DrawReason.WILD_DRAW_4 || reason == "winner-draw") ? true : false;
       if(reason == "challenge"){
         player = getPreviousPlayer(room);
       }
+      await room.save({session});
       io.to(next_player.socket_id).emit(SocketConst.EMIT.NEXT_PLAYER, {next_player:next_next_player._id, before_player:player._id, card_before:room.current_field, card_of_player:next_player.cards, must_call_draw_card:is_must_call_draw_card, draw_reason:reason, turn_right:!room.is_reverse,  number_card_play : room.number_card_play, number_turn_play : room.number_turn_play, number_card_of_player : number_card_of_player});
       console.log("EVENT EMIT (" + player.player_name + "): NEXT_PLAYER to "+next_player.player_name);
-      if(reason != 'draw-card'){
-        await room.save({session});
-      }
     }
 
     const emitNextPlayer = async(room, player, reason, socket, session) => {
@@ -193,6 +206,11 @@ module.exports = (io) => {
       room.players_info.forEach((player) => {
         number_card_of_player[player._id] = player.cards.length;
       });
+      if(room.winners.length > 0){
+        room.winners.forEach((winner) => {
+          number_card_of_player[winner] = 0;
+        });
+      }
       io.sockets.in(room.room_name).emit(SocketConst.EMIT.NOTIFY_CARD, {cards:number_card_of_player, current_field:room.current_field});
       console.log("EVENT EMIT (" + player.player_name +"): NOTIFY_CARD to room " + JSON.stringify(number_card_of_player));
     }
@@ -234,7 +252,6 @@ module.exports = (io) => {
             draw_cards.push(room.deck.shift());
             player.cards.push(draw_cards[i]);
           }
-
           notifyCards(room, player, false, draw_cards);
           io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, can_play_draw_card:false});
           console.log("EVENT EMIT (" + player.player_name + "): DRAW_CARD to room");
@@ -243,7 +260,6 @@ module.exports = (io) => {
         else{
           let draw_card = room.deck.shift();
           player.cards.push(draw_card);
-
           //ドローしたカードが場に出せるかを確認
           if(draw_card.special == Special.WHITE_WILD ||  draw_card.special == Special.WILD_DRAW_4 || draw_card.special == Special.WILD || draw_card.special == Special.WILD_SHUFFLE){
             is_playable = true;
@@ -251,17 +267,18 @@ module.exports = (io) => {
           else if ((room.current_field.special != null && room.current_field.special == draw_card.special) || ((room.current_field.color != null) && room.current_field.color == draw_card.color) || ((room.current_field.number != null ) && room.current_field.number == draw_card.number)){
             is_playable = true;
           }
-
           notifyCards(room, player, false, draw_card);
           io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, can_play_draw_card:is_playable});
+          console.log("EVENT EMIT (" + player.player_name + "): DRAW_CARD to room");
         }
         if(!is_playable || is_forced_drawed){
           //next_playerイベントを発火させるための処理
           emitNextPlayer(room, player, "draw-card", socket, session);
+          return;
         }
+        //saveする
+        await room.save({session});
       }
-      //saveする
-      await room.save({session});
     }
 
     const pointedNotSayUno = async (target_id, socket, session) => {
@@ -338,11 +355,30 @@ module.exports = (io) => {
         let player = room.players_info.find((player) => {
           return player.socket_id == socket.id;
         });
+        //もしbefore playerがbinded_playersに含まれなくなるまで戻って取得
+        let flag = true;
         let before_player = getPreviousPlayer(room);
+        while(flag){
+          if(room.binded_players.length > 0){
+            if( room.binded_players.find((player) => {
+              return player.player_id == before_player._id;
+            }) != null){
+              before_player = getPreviousPlayer(room);
+            }
+            else{
+              flag = false;
+            }
+          }else {
+            flag = false;
+          }
+        }
+
+        console.log("before_player: " + JSON.stringify(before_player.player_name));
+        
         let previous_field = room.previous_field;
         let is_challenge_success = false;
         for (let i = 0; i < before_player.cards.length; i++){
-          if(before_player.cards[i].special == Special.WILD || before_player.cards[i].special == Special.WHITE_WILD || before_player.cards[i].special == Special.WILD_SHUFFLE || before_player.cards[i].special == previous_field.special || before_player.cards[i].color == previous_field.color || before_player.cards[i].number == previous_field.number){
+          if(before_player.cards[i].special == Special.WILD || before_player.cards[i].special == Special.WHITE_WILD || before_player.cards[i].special == Special.WILD_SHUFFLE || (before_player.cards[i].special != null && (before_player.cards[i].special == previous_field.special)) || (before_player.cards[i].color != null && (before_player.cards[i].color == previous_field.color)) || (before_player.cards[i].number != null && (before_player.cards[i].number == previous_field.number))){
             is_challenge_success = true;
             break;
           }
@@ -359,9 +395,7 @@ module.exports = (io) => {
             draw_cards.push(room.deck.shift());
             before_player.cards.push(draw_cards[i]);
           }
-          let wild_draw_4 = {special:Special.WILD_DRAW_4, color:null, number:null};
-          draw_cards.push(wild_draw_4);
-          before_player.cards.push(wild_draw_4);
+          room.is_draw4_last_played = false;
 
           notifyCards(room, before_player, true, draw_cards);
           room.current_field = room.previous_field;
@@ -375,6 +409,7 @@ module.exports = (io) => {
             draw_cards.push(room.deck.shift());
             player.cards.push(draw_cards[i]);
           }
+          room.is_draw4_last_played = false;
           notifyCards(room, player, true, draw_cards);
           emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
         }
@@ -416,40 +451,82 @@ module.exports = (io) => {
           if(player.cards.length == 0){
             room.winners.push(player._id);
             //room.players_infoからplayerを削除
-            room.players_info.splice(room.players_info.findIndex((p) => {
+            room.players_info.splice(room.players_info.indexOf(room.players_info.find((p) => {
               return p._id == player._id;
-            }),1);
+            })),1);
             //room.orderからplayer._idを削除
-            room.order.splice(room.order.find((id) => {
+            room.order.splice(room.order.indexOf(room.order.find((id) => {
               return id == player._id;
-            }),1);
-            if(room.players_info.length == 0){
-              io.sockets.in(room.room_name).emit(SocketConst.EMIT.FINISH_TURN, {turn_no:room.number_turn_play, winner:player._id, score:scores});
-              console.log("EVENT EMIT(" + player.player_name + "): FINISH_TURN to room.");
+            })),1);
+            //もし最後に出したのがWILD,WILD_DRAW_4,WHITE_WILD,WILD_SHUFFLEの場合
+            let is_must_draw = false;
+            if(room.current_field.special == Special.WILD) {
+              room.current_field.color = previous_color;
             }
-            let temp_scores = {};
-            let scores = {};
-            for(let i = 0; i < room.players_info.length; i ++){
-              temp_scores[room.players_info[i]._id] = 0;
-              scores[room.players_info[i]._id] = 0;
-              for(let j = 0; j < room.players_info[i].cards.length; j++){
-                if(room.players_info[i].cards[j].number != null){
-                  temp_scores[room.players_info[i]._id] += room.players_info[i].cards[j].number;
-                }else if(room.players_info[i].cards[j].special == Special.DRAW_2 || room.players_info[i].cards[j].special == Special.REVERSE || room.players_info[i].cards[j].special == Special.SKIP){
-                  temp_scores[room.players_info[i]._id] += 20;
-                }else if(room.players_info[i].cards[j].special == Special.SHUFFLE_WILD || room.players_info[i].cards[j].special == Special.WHITE_WILD){
-                  temp_scores[room.players_info[i]._id] += 40;
-                }else if(room.players_info[i].cards[j].special == Special.WILD_DRAW_4 || room.players_info[i].cards[j].special == Special.WILD){
-                  temp_scores[room.players_info[i]._id] += 50;
-                }
+            else if(room.current_field.special == Special.WILD_DRAW_4){
+              room.current_field.color = previous_color;
+              is_must_draw = true;
+              room.is_draw4_last_played = true;
+            }
+            else if(room.current_field.special == Special.WHITE_WILD){
+              room.current_field.color = previous_color;
+            }
+            else if(room.current_field.special == Special.WILD_SHUFFLE){
+              room.current_field.color = previous_color;
+            }
+            else if(room.current_field.special == Special.DRAW_2){
+              is_must_draw = true;
+              room.is_draw2_last_played = true;
+            }
+
+            //全プレイヤーに全プレイヤーの手札の枚数を通知する。
+            let number_card_of_player = {};
+            room.players_info.forEach((player) => {
+              number_card_of_player[player._id] = player.cards.length;
+            });
+            if(room.winners.length > 0){
+              room.winners.forEach((winner) => {
+                number_card_of_player[winner] = 0;
+              });
+            }
+            io.sockets.in(room.room_name).emit(SocketConst.EMIT.NOTIFY_CARD, {cards:number_card_of_player, current_field:room.current_field});
+            console.log("EVENT EMIT (" + player.player_name +"): NOTIFY_CARD to room " + JSON.stringify(number_card_of_player));
+
+            if(room.players_info.length == 1){
+              //ゲーム終了
+              room.winners.push(room.players_info[0]._id);
+              
+              io.socket.in(room.room_name).emit(SocketConst.EMIT.FINISH_GAME, {rank:room.winners});
+              console.log("EVENT EMIT(" + player.player_name + "): FINISH_GAME to room.");
+
+              return;
+            }
+            if(room.players_info.length == room.current_player){
+              if(room.is_reverse){
+                room.current_player = room.current_player - 1;
+              }else{
+                room.current_player = 0;
+              }
+            }else if(room.current_player == 0){
+              if(room.is_reverse){
+                room.current_player = room.players_info.length - 1;
+              }else{
+                room.current_player = 0;
+              }
+            }else {
+              if(room.is_reverse){
+                room.current_player = room.current_player - 1;
               }
             }
-            for(let i = 0; i < room.players_info.length; i++){
-              if(room.players_info[i]._id != player._id){
-                scores[player._id] += temp_scores[room.players_info[i]._id];
-                scores[room.players_info[i]._id] -= temp_scores[room.players_info[i]._id];
-              }
+            player = room.players_info.find((player) => {
+              return player._id == room.order[room.current_player];
+            });
+            if(is_must_draw){
+              emitNextPlayer(room, player, 'winner-draw', socket, session);
+            }else{
+              emitNextPlayer(room, player, 'winner', socket, session);
             }
+            return;
           }
 
           //全プレイヤーに全プレイヤーの手札の枚数を通知する。
@@ -457,6 +534,11 @@ module.exports = (io) => {
           room.players_info.forEach((player) => {
             number_card_of_player[player._id] = player.cards.length;
           });
+          if(room.winners.length > 0){
+            room.winners.forEach((winner) => {
+              number_card_of_player[winner] = 0;
+            });
+          }
           io.sockets.in(room.room_name).emit(SocketConst.EMIT.NOTIFY_CARD, {cards:number_card_of_player, current_field:room.current_field});
           console.log("EVENT EMIT (" + player.player_name +"): NOTIFY_CARD to room " + JSON.stringify(number_card_of_player));
 
@@ -558,7 +640,6 @@ module.exports = (io) => {
           else if(card_play.special == null || card_play.number != null){
             emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
-
         }else{
           /*プレイヤーが持っているカードの中にこのカードがない
           ペナルティを与える (2枚ドロー)
