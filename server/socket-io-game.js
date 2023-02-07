@@ -1,7 +1,7 @@
 const Room = require('../room_data');
 const { session } = require('../app');
 const { SocketConst, Special, DrawReason, runTransaction, shuffle } = require('./socket-io-common');
-
+const { insideInitDeck } = require('./socket-io-connect');
 module.exports = (io) => {
   io.on('connection', socket => {
 
@@ -240,6 +240,12 @@ module.exports = (io) => {
           2枚ドローする*/
           let draw_card1 = room.deck.shift();
           let draw_card2 = room.deck.shift();
+          //デッキが空になった場合
+          if(room.deck.length <= 0){
+            insideInitDeck(room);
+            draw_card1 = room.deck.shift();
+            draw_card2 = room.deck.shift();
+          }
           //ドローしたカードをプレイヤーの手札に加える
           player.cards.push(draw_card1);
           player.cards.push(draw_card2);
@@ -267,21 +273,6 @@ module.exports = (io) => {
         let is_forced_drawed = false;
         let is_playable = false;
 
-        //場のカードがワイルドドロー4の場合
-        // if(room.is_draw4_last_played){
-        //   //ドロー4が最後に出されたかどうかを更新する
-        //   room.is_draw4_last_played = false;
-        //   //4枚ドローする
-        //   let draw_cards = [];
-        //   for(let i = 0; i < 4; i++){
-        //     draw_cards.push(room.deck.shift());
-        //     player.cards.push(draw_cards[i]);
-        //   }
-        //   notifyCards(room, player, false, draw_cards);
-        //   io.sockets.in(room.room_name).emit(SocketConst.EMIT.DRAW_CARD, {player:player._id, is_draw:true, can_play_draw_card:false});
-        //   console.log("EVENT EMIT (" + player.player_name +"): DRAW_CARD to room");
-        //   is_forced_drawed = true;
-        // }
         //場のカードがドロー2の場合
         if(room.is_draw2_last_played){
           //ドロー2が最後に出されたかどうかを更新する
@@ -289,6 +280,14 @@ module.exports = (io) => {
           let draw_cards = [];
           for(let i = 0; i < 2; i++){
             draw_cards.push(room.deck.shift());
+          }
+          if(room.deck.length <= 0){
+            insideInitDeck(room);
+            for(let i = 0; i < 2; i++){
+              draw_cards.push(room.deck.shift());
+            }
+          }
+          for(let i = 0; i < 2; i++){
             player.cards.push(draw_cards[i]);
           }
           notifyCards(room, player, false, draw_cards);
@@ -298,6 +297,12 @@ module.exports = (io) => {
         }
         else{
           let draw_card = room.deck.shift();
+          //デッキが空になった場合
+          if(room.deck.length <= 0){
+            insideInitDeck(room);
+            draw_card = room.deck.shift();
+          }
+
           player.cards.push(draw_card);
           //ドローしたカードが場に出せるかを確認
           if(draw_card.special == Special.WHITE_WILD ||  draw_card.special == Special.WILD_DRAW_4 || draw_card.special == Special.WILD || draw_card.special == Special.WILD_SHUFFLE){
@@ -339,6 +344,14 @@ module.exports = (io) => {
           let draw_cards = [];
           for(let i = 0; i < 2; i++){
             draw_cards.push(room.deck.shift());
+          }
+          if(room.deck.length <= 0){
+            insideInitDeck(room);
+            for(let i = 0; i < 2; i++){
+              draw_cards.push(room.deck.shift());
+            }
+          }
+          for(let i = 0; i < 2; i++){
             target_player.cards.push(draw_cards[i]);
           }
 
@@ -364,8 +377,19 @@ module.exports = (io) => {
         let draw_cards = [];
         for(let i = 0; i < 4; i++){
           draw_cards.push(room.deck.shift());
+        }
+
+        //デッキが空になった場合
+        if(room.deck.length <= 0){
+          insideInitDeck(room);
+          for(let i = 0; i < 4; i++){
+            draw_cards.push(room.deck.shift());
+          }
+        }
+        for(let i = 0; i < 4; i++){
           player.cards.push(draw_cards[i]);
         }
+
         notifyCards(room, player, false, draw_cards);
         emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
       }
@@ -381,6 +405,14 @@ module.exports = (io) => {
         let draw_cards = [];
         for(let i = 0; i < 2; i++){
           draw_cards.push(room.deck.shift());
+        }
+        if(room.deck.length <= 0){
+          insideInitDeck(room);
+          for(let i = 0; i < 2; i++){
+            draw_cards.push(room.deck.shift());
+          }
+        }
+        for(let i = 0; i < 2; i++){
           player.cards.push(draw_cards[i]);
         }
         notifyCards(room, player, true, draw_cards);
@@ -436,8 +468,18 @@ module.exports = (io) => {
           let draw_cards = [];
           for(let i = 0; i < 4; i++){
             draw_cards.push(room.deck.shift());
+          }
+          //デッキが空になった場合
+          if(room.deck.length <= 0){
+            insideInitDeck(room);
+            for(let i = 0; i < 4; i++){
+              draw_cards.push(room.deck.shift());
+            }
+          }
+          for(let i = 0; i < 4; i++){
             before_player.cards.push(draw_cards[i]);
           }
+
           room.is_draw4_last_played = false;
 
           notifyCards(room, before_player, true, draw_cards);

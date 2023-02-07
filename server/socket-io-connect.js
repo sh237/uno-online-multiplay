@@ -225,6 +225,21 @@ module.exports = (io) => {
 
   //既存のRoomデータのdeckやcurrent_fieldやcurrent_playerを初期化する関数
   const initDeck = (room) =>{
+    insideInitDeck(room);
+    //一時的にコメントアウト
+    // room.order = shuffle(room.order);
+    room.current_player = 0;
+    //current_fieldをdeckからランダムに取り出す
+    room.current_field = room.deck.splice(Math.floor(Math.random() * room.deck.length), 1)[0];
+    room.save((error, room) => {
+      if (error) {
+        console.error(error);
+        return;
+      }
+    });
+  }
+
+  const insideInitDeck = (room) => {
     let deck = [];
     for(let c=0; c<4; c++){
       let color = "";
@@ -279,20 +294,7 @@ module.exports = (io) => {
     //要削除
     room.deck.push({color: null, special: Special.WILD_SHUFFLE, number: null});
     room.deck.push({color: null, special: Special.WHITE_WILD, number: null});
-
-    //一時的にコメントアウト
-    // room.order = shuffle(room.order);
-    room.current_player = 0;
-    //current_fieldをdeckからランダムに取り出す
-    room.current_field = room.deck.splice(Math.floor(Math.random() * room.deck.length), 1)[0];
-    room.save((error, room) => {
-      if (error) {
-        console.error(error);
-        return;
-      }
-    });
   }
-
 
   //カードを配る関数
   const distributeCards = (room) => {
