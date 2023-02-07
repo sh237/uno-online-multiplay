@@ -224,7 +224,6 @@ function Game() {
     
     socket.on(SocketConst.EMIT.CHALLENGE, (dataRes) => {
       if (dataRes.is_challenge) {
-        // setChallengeResult(dataRes);
         if (dataRes.is_challenge_success) {
           console.log(`${dataRes.challenger} challenge successfully!`);
           setChallengeResult(`${dataRes.challenger} challenge successfully!`);
@@ -458,17 +457,22 @@ function Game() {
     console.log("timer start");
     setTime(10);
     const timerId = setInterval(()=>{
-      if(refTime.current==0){
+      if(refTime.current===-1){
         setIsMyTurn(false);
         console.log("EMIT.TIME_OUT");
         socket.emit(SocketConst.EMIT.TIME_OUT , {}, (err) => {
           handleError(SocketConst.EMIT.TIME_OUT, err);
         });
         clearInterval(timerId);
+        setTime(10);
       }else if(!refIsMyTurn.current){
         clearInterval(timerId);
+        setTime(10);
+      }else if(refTime.current===0){
+        setIsMyTurn(false);
+        setTime(refTime.current-1);
       }else{
-        setTime(refTime.current-1)
+        setTime(refTime.current-1);
       }
     },1000);
   }
@@ -522,7 +526,7 @@ function Game() {
           <div>
             <p style={{marginTop:"0"}}>My turn : {isMyTurn ? "true" : "false"}</p>
             <p style={{marginTop:"0"}}>say uno:{isSayUno ? "true" : "false"}</p>
-            <p style={{marginTop:"0",color:'red'}}>Count Down : {time}</p>
+            <p style={{marginTop:"0",color:'red'}}>Count Down : {time!==-1 ? time : 0}</p>
           </div>
         </div>
 
