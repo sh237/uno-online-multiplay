@@ -167,7 +167,7 @@ function Game() {
             return card.color == dataRes.card_play.color && card.special == dataRes.card_play.special && card.number == dataRes.card_play.number;
           });
           if(index!==-1){
-            const arr = [...prevState];
+            const arr = [...prevState]; 
             arr.splice(index, 1);
             return arr;
           }else{
