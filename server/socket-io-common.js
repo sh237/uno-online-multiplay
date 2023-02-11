@@ -1,5 +1,6 @@
 const Room = require('../room_data');
 const mongoose = require('mongoose');
+const { io } = require('socket.io-client');
 
 const SocketConst = {
     EMIT: {
@@ -47,6 +48,13 @@ const DrawReason = {
     BIND_2: 'bind_2',
     NOTING: 'nothing',
 }
+const shuffle = ([...array]) => {
+    for (let i = array.length - 1; i >= 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+};
 
 module.exports = {
     SocketConst: SocketConst,
@@ -54,23 +62,43 @@ module.exports = {
     Color: Color,
     DrawReason: DrawReason,
 
-    runTransaction : async function (session, operations, args) {
-        session = await mongoose.startSession();
-        try {
-            // Start a transaction
-            await session.startTransaction();
-            // Perform operations in the transaction
-            operations(...args);
-            // Commit the transaction
-            await session.commitTransaction();
-        } catch (error) {
-            console.log("Transaction aborting due to error:", error);
-            // Abort the transaction if something went wrong
-            await session.abortTransaction();
-            throw error;
-        } finally {
-            // End the session
-            session.endSession();
+    runTransaction : async function ( operations, args) {
+      let session;
+      try {
+          session = await mongoose.startSession();
+          // args[0] = session;
+          // Start a transaction
+          session.startTransaction();
+          // Perform operations in the transaction
+          await operations(...args);
+          // Commit the transaction
+          await session.commitTransaction();
+      } catch (error) {
+          console.log("Transaction aborting due to error:", error);
+          // Abort the transaction if something went wrong
+          await session.abortTransaction();
+          throw error;
+      } finally {
+          // End the session
+          if (session) {
+              await session.endSession();
+          }
+      }
+  },
+
+    getPreviousPlayer : function (room) {
+        if(room.is_reverse){
+            return room.players_info.find((player) => player._id == room.order[(room.current_player + 1) % room.players_info.length]);
+        }else{
+            return room.players_info.find((player) => player._id == room.order[(room.current_player - 1 + room.players_info.length) % room.players_info.length]);
+        }
+    },
+  
+    getNextPlayer : function (room) {
+        if(room.is_reverse){
+            return room.players_info.find((player) => player._id == room.order[(room.current_player - 1 + room.players_info.length ) % room.players_info.length]);
+        }else{
+            return room.players_info.find((player) => player._id == room.order[(room.current_player + 1) % room.players_info.length]);
         }
     },
 
@@ -130,11 +158,63 @@ module.exports = {
         return is_must_call_draw_card;
     },
 
-    shuffle : ([...array]) => {
-        for (let i = array.length - 1; i >= 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [array[i], array[j]] = [array[j], array[i]];
+    shuffle : this.shuffle,
+
+    insideInitDeck : function(room)  {
+        let deck = [];
+        for(let c=0; c<4; c++){
+          let color = "";
+          switch(c){
+            case 0:10
+              color = Color.RED;
+              break;
+            case 1:
+              color = Color.YELLOW;
+              break;
+            case 2:
+              color = Color.GREEN;
+              break;
+            case 3:
+              color = Color.BLUE;
+              break;
+          }
+          //数字カード76枚の設定
+          for(let n=1; n<20; n++){
+            deck.push({color: color, special: null, number: n%10});
+          }
+          //ドロー2 8枚の設定
+          for(let n=0; n<2; n++){
+            deck.push({color: color, special: Special.DRAW_2, number: null});
+          }
+          //リバース 8枚の設定
+          for(let n=0; n<2; n++){
+            deck.push({color: color, special: Special.REVERSE, number: null});
+          }
+          //スキップ 8枚の設定
+          for(let n=0; n<2; n++){
+            deck.push({color: color, special: Special.SKIP, number: null});
+          }
         }
-        return array;
-      }
+        //ワイルドカード 4枚の設定
+        for(let n=0; n<4; n++){
+          deck.push({color: null, special: Special.WILD, number: null});
+        }
+        //ワイルドドロー4 4枚の設定
+        for(let n=0; n<4; n++){
+          deck.push({color: null, special: Special.WILD_DRAW_4, number: null});
+        }
+        //シャッフルワイルドカード 1枚の設定
+        deck.push({color: null, special: Special.WILD_SHUFFLE, number: null});
+        //白いワイルドカード 3枚の設定
+        for(let n=0; n<3; n++){
+          deck.push({color: null, special: Special.WHITE_WILD, number: null});
+        }
+        room.deck = deck;
+        //ランダムにdeckとorderを並び替える
+        room.deck = shuffle(room.deck);
+        //要削除
+        room.deck.push({color: null, special: Special.WILD_SHUFFLE, number: null});
+        room.deck.push({color: null, special: Special.WHITE_WILD, number: null});
+      },
+
   };
