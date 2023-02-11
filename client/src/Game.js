@@ -69,7 +69,7 @@ function Game() {
   const [sayUnoPlayer,setSayUnoPlayer] = useState("");
   const [countSpecialLogic,setCountSpecialLogic] = useState(10);
   const [fieldCard, setFieldCard] = useState({ color: "", special: "", number: "" });
-  const [time, setTime] = useState(10);
+  const [time, setTime] = useState(100);
   const [challengeResult, setChallengeResult] = useState("");
   const [displayPublicCard, setDisplayPublicCard] = useState({});
   const refTime = useRef(time);
@@ -99,7 +99,7 @@ function Game() {
     //サーバーからゲームの初期設定を受信
     socket.on(SocketConst.EMIT.FIRST_PLAYER, (dataRes) => {
       if(context.playerId===dataRes.first_player){
-        setIsMyTurn(true);
+        // setIsMyTurn(true);
       }
       setFieldCard(dataRes.first_card);
       setPlayersList(dataRes.play_order);
@@ -261,10 +261,37 @@ function Game() {
           setSayUnoPlayer("");
         },5000);
       }
+      if (dataRes.player === context.playerId && dataRes.card_play){
+        setMyCards((prevState)=>{
+          const index = prevState.findIndex((card) => {
+            return card.color == dataRes.card_play.color && card.special == dataRes.card_play.special && card.number == dataRes.card_play.number;
+          });
+          if(index!==-1){
+            const arr = [...prevState];
+            arr.splice(index, 1);
+            return arr;
+          }else{
+            return prevState;
+          }
+        });
+      }
     });
 
     socket.on(SocketConst.EMIT.SAY_UNO_AND_PLAY_DRAW_CARD, (dataRes) => {
-      
+      if (dataRes.player === context.playerId && dataRes.card_play){
+        setMyCards((prevState)=>{
+          const index = prevState.findIndex((card) => {
+            return card.color == dataRes.card_play.color && card.special == dataRes.card_play.special && card.number == dataRes.card_play.number;
+          });
+          if(index!==-1){
+            const arr = [...prevState];
+            arr.splice(index, 1);
+            return arr;
+          }else{
+            return prevState;
+          }
+        });
+      }
     });
     
     socket.on(SocketConst.EMIT.POINTED_NOT_SAY_UNO, (dataRes) => {
@@ -327,6 +354,7 @@ function Game() {
   
   //イベント送信用
   function sendColorOfWild(data) {
+    console.log("emit:COLOR_OF_WILD");
     socket.emit(SocketConst.EMIT.COLOR_OF_WILD, data, (err) => {
       handleError(SocketConst.EMIT.COLOR_OF_WILD, err);
     });
@@ -421,6 +449,9 @@ function Game() {
   function whetherPlayDrawCard(v){
     setCanPlayDrawCard(false);
     const data = { is_play_card: v };
+    console.log("myCards.length: " + myCards.length);
+    console.log("isSayUno: " + isSayUno);
+    console.log("v: " + v);
     if(myCards.length==2 && isSayUno && v){
       sendSayUnoAndPlayDrawCard();
     }
@@ -455,7 +486,7 @@ function Game() {
 
   function timer(){
     console.log("timer start");
-    setTime(10);
+    setTime(100);
     const timerId = setInterval(()=>{
       if(refTime.current===-1){
         setIsMyTurn(false);
@@ -464,10 +495,10 @@ function Game() {
           handleError(SocketConst.EMIT.TIME_OUT, err);
         });
         clearInterval(timerId);
-        setTime(10);
+        setTime(100);
       }else if(!refIsMyTurn.current){
         clearInterval(timerId);
-        setTime(10);
+        setTime(100);
       }else if(refTime.current===0){
         setIsMyTurn(false);
         setTime(refTime.current-1);
