@@ -172,9 +172,15 @@ module.exports = (io) => {
           let player_id = player._id;
           const res = { room_name: room.room_name, player: room.player, your_id : player_id, total_turn : 1000, white_wild : "bind_2" };
           callback(null, res);
+
+          //各プレイヤーのidと名前の対応を作成
+          let player_id_name_map = {};
+          room.players_info.forEach((player) => {
+            player_id_name_map[player._id] = player.player_name;
+          });
           //誰がはじめにカードを出すか、カードを出す順番を告知する
           // if(!is_wild_last_played && !is_draw2_last_played){
-          io.sockets.in(room.room_name).emit(SocketConst.EMIT.FIRST_PLAYER, {first_player: room.order[room.current_player], first_card : room.current_field, play_order : room.order });
+          io.sockets.in(room.room_name).emit(SocketConst.EMIT.FIRST_PLAYER, {first_player: room.order[room.current_player], first_card : room.current_field, play_order : room.order, player_names : player_id_name_map });
           console.log("EVENT EMIT (" + getNextPlayer(room).player_name + "): FIRST_PLAYER to room ");
           // }
           //それぞれにカードを配る。
