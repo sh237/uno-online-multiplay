@@ -16,6 +16,8 @@ const RoomSchema = mongoose.Schema({
     winners: [String],//勝者のid(1位から順に)
     is_draw4_last_played: Boolean,//draw4が最後に出されたかどうか
     is_draw2_last_played: Boolean,//draw2が最後に出されたかどうか
+    is_waiting_for_wild_draw4: Boolean,//色変更待ちかどうか
+    is_waiting_for_wild: Boolean,//色変更待ちかどうか
     previous_field:{color:String,special:String,number:Number},//前の場のカード(CHALLENGE用)
 });
 

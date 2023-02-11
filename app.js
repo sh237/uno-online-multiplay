@@ -16,7 +16,6 @@ const options = {
 mongoose.connect('mongodb://127.0.0.1/test_db',options);
 
 const db = mongoose.connection;
-let session = null;
 db.on('error', console.error.bind(console, 'DB connection error:'));
 db.once('open', async() => {
   console.log('DB connection successful'); 
