@@ -74,9 +74,7 @@ function Game() {
   const [displayPublicCard, setDisplayPublicCard] = useState({});
   const refTime = useRef(time);
   const refIsMyTurn = useRef(isMyTurn);
-  //----------------追加----------------
   const [playerNames, setPlayerNames] = useState({});
-  //----------------追加----------------
 
   useEffect(() => {
     refTime.current = time;
@@ -113,18 +111,11 @@ function Game() {
         playOrder.splice(result,1);
       }
       const playersCardList_={}
-      //-------------追加----------------
-      const player_names = dataRes.player_names;
-      setPlayerNames(player_names);
+      setPlayerNames(dataRes.player_names);
       playOrder.forEach((v) => {
         if(v!=context.playerId);
-        playersCardList_[player_names[v]]=[-1,-1,-1,-1,-1,-1,-1];
+        playersCardList_[v]=[-1,-1,-1,-1,-1,-1,-1];
       });
-      // playOrder.forEach((v) => {
-      //   if(v!=context.playerId);
-      //   playersCardList_[v]=[-1,-1,-1,-1,-1,-1,-1];
-      // });
-      //-------------追加----------------
       setPlayersCardList(playersCardList_);
     });
 
@@ -133,17 +124,10 @@ function Game() {
       setPlayersCardList((prevState) => {
         Object.keys(dataRes.cards).forEach((id)=>{
           if(id!=context.playerId){
-            //----------------変更----------------
-            console.log("[...Array(dataRes.cards[id])].map(() => -1) : " + [...Array(dataRes.cards[id])].map(() => -1));
-            prevState[playerNames[id]]=[...Array(dataRes.cards[id])].map(() => -1);
-            // prevState[id]=[...Array(dataRes.cards[id])].map(() => -1);
-            //----------------変更----------------
+            prevState[id]=[...Array(dataRes.cards[id])].map(() => -1);
           }
         })
-        //----------------変更----------------
-        delete prevState[playerNames[context.playerId]];
-        // delete prevState[context.playerId];
-        //----------------変更----------------
+        delete prevState[context.playerId];
         return prevState;
       });
       setFieldCard(dataRes.current_field);
@@ -366,6 +350,11 @@ function Game() {
       socket.off(SocketConst.EMIT.POINTED_NOT_SAY_UNO);
       socket.off(SocketConst.EMIT.FINISH_TURN);
       socket.off(SocketConst.EMIT.NEXT_PLAYER);
+      socket.off(SocketConst.EMIT.NOTIFY_CARD);
+      socket.off(SocketConst.EMIT.TIME_OUT);
+      socket.off(SocketConst.EMIT.SHUFFLE_WILD);
+      socket.off(SocketConst.EMIT.SPECIAL_LOGIC);
+      socket.off(SocketConst.EMIT.FINISH_GAME); 
     }
   },[context.playerId]);
 
@@ -655,7 +644,7 @@ function Game() {
       {Object.keys(playersCardList).map((key,i) => (
         <div className={`player${i+2} `}>
           <div style={{marginBottom:'10px'}}>
-            <p style={{display:'inline',marginRight:'30px'}}>ID : {key}</p>
+            <p style={{display:'inline',marginRight:'30px'}}>ID : {playerNames[key]}</p>
             <button style={{display:'inline-block'}} onClick={()=>{onPointedNotSayUno(key)}}>pointed not say uno</button>
           </div>
         <div key={i} className={`player-card`}>
