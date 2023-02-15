@@ -297,7 +297,7 @@ module.exports = (io) => {
   const distributeCards = (room) => {
     //カードを配る
     for(let i=0; i<room.order.length; i++){
-      for(let j=0; j<2; j++){
+      for(let j=0; j<7; j++){
         let card = room.deck.splice(Math.floor(Math.random() * room.deck.length), 1)[0];
         room.players_info[i].cards.push(card);
       }

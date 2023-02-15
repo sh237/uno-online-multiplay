@@ -783,7 +783,7 @@ module.exports = (io) => {
             //場の色は前の色にする
             room.current_field.color = previous_color;
             //next_playerイベントを発火させるための処理
-            emitNextPlayer(room, player, reason, socket, session);
+            emitNextPlayer(room, player, DrawReason.NOTING, socket, session);
           }
           else if(card_play.special == Special.WHITE_WILD){
             //次のプレイヤーを取得する
