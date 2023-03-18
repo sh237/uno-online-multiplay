@@ -87,6 +87,8 @@ We made it faithful to the ALGORI specifications, but the handling of penalties,
 * Twitter : -
 * Email : syun864297531@gmail.com
 
+* Naoto Sugiura
+
 # License
 
 "uno-online-multiplay" is under [MIT license].
